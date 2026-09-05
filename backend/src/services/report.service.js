@@ -1,194 +1,153 @@
-import { PrismaClient } from '@prisma/client';
-import Decimal from 'decimal.js';
+import { prisma } from '../lib/prisma.js';
+import { money, moneyStr } from '../lib/money.js';
 import { accountingService } from './accounting.service.js';
 
-const prisma = new PrismaClient();
+function accountBalance(type, debit, credit) {
+  const t = (type || '').toLowerCase();
+  if (t === 'asset' || t === 'expense') {
+    return debit.minus(credit);
+  }
+  return credit.minus(debit);
+}
+
+async function loadAccountBalances() {
+  const items = await prisma.journalItem.findMany({
+    include: { account: true },
+  });
+
+  const accountBalances = {};
+
+  for (const item of items) {
+    if (!accountBalances[item.accountId]) {
+      accountBalances[item.accountId] = {
+        account: item.account,
+        debit: money(0),
+        credit: money(0),
+      };
+    }
+
+    accountBalances[item.accountId].debit = accountBalances[
+      item.accountId
+    ].debit.plus(money(item.debit));
+    accountBalances[item.accountId].credit = accountBalances[
+      item.accountId
+    ].credit.plus(money(item.credit));
+  }
+
+  return accountBalances;
+}
 
 export const reportService = {
-  /**
-   * Get Profit & Loss statement
-   * Income - Expenses = Net Profit
-   */
-  async getProfitAndLoss() {
+  async getProfitAndLoss(period = 'all') {
     const items = await prisma.journalItem.findMany({
-      include: {
-        account: true,
-      },
+      include: { account: true, entry: true },
     });
 
-    let totalIncome = new Decimal(0);
-    let totalExpense = new Decimal(0);
+    let totalRevenue = money(0);
+    let totalExpenses = money(0);
 
     for (const item of items) {
-      const debit = new Decimal(item.debit);
-      const credit = new Decimal(item.credit);
+      const debit = money(item.debit);
+      const credit = money(item.credit);
+      const type = (item.account.type || '').toLowerCase();
 
-      if (item.account.type === 'income') {
-        // For income: credit increases
-        totalIncome = totalIncome.plus(credit).minus(debit);
-      } else if (item.account.type === 'expense') {
-        // For expense: debit increases
-        totalExpense = totalExpense.plus(debit).minus(credit);
+      if (type === 'income') {
+        totalRevenue = totalRevenue.plus(credit).minus(debit);
+      } else if (type === 'expense') {
+        totalExpenses = totalExpenses.plus(debit).minus(credit);
       }
     }
 
-    const netProfit = totalIncome.minus(totalExpense);
+    const netProfit = totalRevenue.minus(totalExpenses);
 
     return {
-      totalIncome: totalIncome.toFixed(2),
-      totalExpense: totalExpense.toFixed(2),
-      netProfit: netProfit.toFixed(2),
+      period: period || 'all',
+      totalRevenue: moneyStr(totalRevenue),
+      totalExpenses: moneyStr(totalExpenses),
+      netProfit: moneyStr(netProfit),
+      totalIncome: moneyStr(totalRevenue),
+      totalExpense: moneyStr(totalExpenses),
     };
   },
 
-  /**
-   * Get Balance Sheet
-   * Assets = Liabilities + Capital
-   */
   async getBalanceSheet() {
-    const items = await prisma.journalItem.findMany({
-      include: {
-        account: true,
-      },
-    });
+    const accountBalances = await loadAccountBalances();
 
-    let totalAssets = new Decimal(0);
-    let totalLiabilities = new Decimal(0);
-    let totalCapital = new Decimal(0);
+    let totalAssets = money(0);
+    let totalLiabilities = money(0);
+    let totalCapital = money(0);
 
-    const accountBalances = {};
-
-    // Group items by account
-    for (const item of items) {
-      if (!accountBalances[item.accountId]) {
-        accountBalances[item.accountId] = {
-          account: item.account,
-          debit: new Decimal(0),
-          credit: new Decimal(0),
-        };
-      }
-
-      accountBalances[item.accountId].debit = accountBalances[
-        item.accountId
-      ].debit.plus(new Decimal(item.debit));
-      accountBalances[item.accountId].credit = accountBalances[
-        item.accountId
-      ].credit.plus(new Decimal(item.credit));
-    }
-
-    // Calculate balances and totals
     const assets = [];
     const liabilities = [];
     const capital = [];
 
     for (const accountId in accountBalances) {
       const { account, debit, credit } = accountBalances[accountId];
-
-      let balance;
-      if (['asset', 'expense'].includes(account.type)) {
-        balance = debit.minus(credit);
-      } else {
-        balance = credit.minus(debit);
-      }
-
+      const balance = accountBalance(account.type, debit, credit);
       const accountData = {
+        id: account.id,
         name: account.name,
         type: account.type,
-        balance: balance.toFixed(2),
+        balance: moneyStr(balance),
       };
 
-      if (account.type === 'asset') {
+      const type = (account.type || '').toLowerCase();
+      if (type === 'asset') {
         assets.push(accountData);
         totalAssets = totalAssets.plus(balance);
-      } else if (account.type === 'liability') {
+      } else if (type === 'liability') {
         liabilities.push(accountData);
         totalLiabilities = totalLiabilities.plus(balance);
-      } else if (account.type === 'capital') {
+      } else if (type === 'capital') {
         capital.push(accountData);
         totalCapital = totalCapital.plus(balance);
       }
     }
 
-    // Include profit/loss in capital
     const pl = await this.getProfitAndLoss();
-    const totalCapitalWithPL = new Decimal(totalCapital).plus(
-      new Decimal(pl.netProfit)
-    );
+    const currentPeriodProfit = money(pl.netProfit);
+    const equitySide = totalLiabilities
+      .plus(totalCapital)
+      .plus(currentPeriodProfit);
+    const balanced = moneyStr(totalAssets) === moneyStr(equitySide);
 
     return {
       assets: {
         items: assets,
-        total: totalAssets.toFixed(2),
+        total: moneyStr(totalAssets),
       },
       liabilities: {
         items: liabilities,
-        total: totalLiabilities.toFixed(2),
+        total: moneyStr(totalLiabilities),
       },
       capital: {
         items: capital,
-        total: totalCapital.toFixed(2),
+        total: moneyStr(totalCapital),
       },
-      netProfit: pl.netProfit,
-      totalCapitalWithPL: totalCapitalWithPL.toFixed(2),
-      totalLiabilitiesAndCapital: new Decimal(totalLiabilities)
-        .plus(totalCapitalWithPL)
-        .toFixed(2),
-      isBalanced:
-        totalAssets.toFixed(2) ===
-        new Decimal(totalLiabilities)
-          .plus(totalCapitalWithPL)
-          .toFixed(2),
+      totalAssets: moneyStr(totalAssets),
+      totalLiabilities: moneyStr(totalLiabilities),
+      totalCapital: moneyStr(totalCapital),
+      currentPeriodProfit: moneyStr(currentPeriodProfit),
+      netProfit: moneyStr(currentPeriodProfit),
+      totalCapitalWithPL: moneyStr(totalCapital.plus(currentPeriodProfit)),
+      totalLiabilitiesAndCapital: moneyStr(equitySide),
+      balanced,
+      isBalanced: balanced,
     };
   },
 
-  /**
-   * Get Dashboard Summary
-   */
   async getDashboardSummary() {
-    // Get P&L
     const pl = await this.getProfitAndLoss();
+    const accountBalances = await loadAccountBalances();
 
-    // Get account balances
-    const items = await prisma.journalItem.findMany({
-      include: {
-        account: true,
-      },
-    });
-
-    const accountBalances = {};
-
-    for (const item of items) {
-      if (!accountBalances[item.accountId]) {
-        accountBalances[item.accountId] = {
-          account: item.account,
-          debit: new Decimal(0),
-          credit: new Decimal(0),
-        };
-      }
-
-      accountBalances[item.accountId].debit = accountBalances[
-        item.accountId
-      ].debit.plus(new Decimal(item.debit));
-      accountBalances[item.accountId].credit = accountBalances[
-        item.accountId
-      ].credit.plus(new Decimal(item.credit));
-    }
-
-    // Find specific balances
-    let cashBalance = new Decimal(0);
-    let bankBalance = new Decimal(0);
-    let receivables = new Decimal(0);
-    let payables = new Decimal(0);
+    let cashBalance = money(0);
+    let bankBalance = money(0);
+    let receivables = money(0);
+    let payables = money(0);
 
     for (const accountId in accountBalances) {
       const { account, debit, credit } = accountBalances[accountId];
-
-      let balance;
-      if (['asset', 'expense'].includes(account.type)) {
-        balance = debit.minus(credit);
-      } else {
-        balance = credit.minus(debit);
-      }
+      const balance = accountBalance(account.type, debit, credit);
 
       if (account.name === 'Cash') cashBalance = balance;
       if (account.name === 'Bank') bankBalance = balance;
@@ -196,101 +155,58 @@ export const reportService = {
       if (account.name === 'Creditors') payables = balance;
     }
 
-    // Get recent transactions
     const recentJournalEntries = await prisma.journalEntry.findMany({
       take: 10,
       include: {
         journal: true,
-        items: {
-          include: {
-            account: true,
-          },
-        },
+        items: { include: { account: true } },
       },
-      orderBy: {
-        date: 'desc',
-      },
+      orderBy: { date: 'desc' },
     });
 
     return {
-      revenue: pl.totalIncome,
-      expenses: pl.totalExpense,
+      totalRevenue: pl.totalRevenue,
+      totalExpenses: pl.totalExpenses,
       netProfit: pl.netProfit,
-      cashBalance: cashBalance.toFixed(2),
-      bankBalance: bankBalance.toFixed(2),
-      receivables: receivables.toFixed(2),
-      payables: payables.toFixed(2),
+      revenue: pl.totalRevenue,
+      expenses: pl.totalExpenses,
+      cashBalance: moneyStr(cashBalance),
+      bankBalance: moneyStr(bankBalance),
+      receivables: moneyStr(receivables),
+      payables: moneyStr(payables),
       recentTransactions: recentJournalEntries.map((entry) => ({
         id: entry.id,
         date: entry.date,
         journal: entry.journal.name,
+        journalName: entry.journal.name,
         reference: entry.reference,
+        status: entry.status,
         items: entry.items,
       })),
     };
   },
 
-  /**
-   * Get complete ledger
-   */
   async getLedger(accountId = null) {
     if (accountId) {
-      return await accountingService.getLedgerForAccount(accountId);
-    } else {
-      return await accountingService.getCompleteLedger();
+      return accountingService.getLedgerForAccount(accountId);
     }
+    return accountingService.getCompleteLedger();
   },
 
-  /**
-   * Get all accounts with balances
-   */
   async getAccountBalances() {
-    const items = await prisma.journalItem.findMany({
-      include: {
-        account: true,
-      },
-    });
-
-    const accountBalances = {};
-
-    for (const item of items) {
-      if (!accountBalances[item.accountId]) {
-        accountBalances[item.accountId] = {
-          id: item.accountId,
-          name: item.account.name,
-          type: item.account.type,
-          debit: new Decimal(0),
-          credit: new Decimal(0),
-        };
-      }
-
-      accountBalances[item.accountId].debit = accountBalances[
-        item.accountId
-      ].debit.plus(new Decimal(item.debit));
-      accountBalances[item.accountId].credit = accountBalances[
-        item.accountId
-      ].credit.plus(new Decimal(item.credit));
-    }
-
-    // Calculate balances
+    const accountBalances = await loadAccountBalances();
     const results = [];
+
     for (const accountId in accountBalances) {
-      const { id, name, type, debit, credit } = accountBalances[accountId];
-
-      let balance;
-      if (['asset', 'expense'].includes(type)) {
-        balance = debit.minus(credit);
-      } else {
-        balance = credit.minus(debit);
-      }
-
+      const { account, debit, credit } = accountBalances[accountId];
+      const balance = accountBalance(account.type, debit, credit);
       results.push({
-        id,
-        name,
-        type,
-        balance: balance.toFixed(2),
-        debit: debit.toFixed(2),
-        credit: credit.toFixed(2),
+        id: account.id,
+        name: account.name,
+        type: account.type,
+        balance: moneyStr(balance),
+        debit: moneyStr(debit),
+        credit: moneyStr(credit),
       });
     }
 

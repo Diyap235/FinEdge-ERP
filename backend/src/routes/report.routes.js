@@ -13,10 +13,19 @@ router.get('/dashboard/summary', async (req, res) => {
   }
 });
 
+router.get('/dashboard', async (req, res) => {
+  try {
+    const summary = await reportService.getDashboardSummary();
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get P&L
 router.get('/profit-loss', async (req, res) => {
   try {
-    const pl = await reportService.getProfitAndLoss();
+    const pl = await reportService.getProfitAndLoss(req.query.period || 'all');
     res.json(pl);
   } catch (error) {
     res.status(500).json({ error: error.message });
