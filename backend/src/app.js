@@ -15,6 +15,7 @@ import customerInvoiceRoutes from './routes/customerInvoice.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import journalEntryRoutes from './routes/journalEntry.routes.js';
 import reportRoutes from './routes/report.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/customer-invoices', customerInvoiceRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/journal-entries', journalEntryRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
