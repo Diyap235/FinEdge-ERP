@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { Search, Bell, ChevronDown, X, CalendarDays } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import {
+  Search, Bell, ChevronDown, X, CalendarDays,
+  ShieldCheck, Calculator, UserCircle, Check,
+} from 'lucide-react';
 
 /* ── Page label map ─────────────────────────────────────────────── */
 const PAGE_LABELS = {
@@ -17,6 +20,37 @@ const PAGE_LABELS = {
   'reports':           'Reports',
 };
 
+/* ── Role definitions ───────────────────────────────────────────── */
+const ROLES = [
+  {
+    id:       'admin',
+    label:    'Admin',
+    subtitle: 'Administrator',
+    initials: 'A',
+    icon:     ShieldCheck,
+    color:    '#0F6A4B',
+    bg:       '#e6f5ef',
+  },
+  {
+    id:       'accountant',
+    label:    'Accountant',
+    subtitle: 'Accountant',
+    initials: 'AC',
+    icon:     Calculator,
+    color:    '#1a56db',
+    bg:       '#e8f0fe',
+  },
+  {
+    id:       'contact',
+    label:    'Contact',
+    subtitle: 'Contact',
+    initials: 'C',
+    icon:     UserCircle,
+    color:    '#7c3aed',
+    bg:       '#f3e8ff',
+  },
+];
+
 /* ── Date pill helper ───────────────────────────────────────────── */
 function formatDate() {
   return new Date().toLocaleDateString('en-IN', {
@@ -27,12 +61,230 @@ function formatDate() {
   });
 }
 
-/* ── User initials ──────────────────────────────────────────────── */
-function initials(name) {
-  return name.charAt(0).toUpperCase();
+/* ══════════════════════════════════════════════════════════════════
+   RoleDropdown — self-contained, click-outside-aware
+══════════════════════════════════════════════════════════════════ */
+function RoleDropdown({ currentUser, onUserChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+
+  /* Close on outside click ──────────────────────────────────────── */
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const active = ROLES.find(r => r.id === currentUser) ?? ROLES[0];
+
+  const handleSelect = (roleId) => {
+    onUserChange(roleId);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', flexShrink: 0 }}>
+
+      {/* ── Trigger button ──────────────────────────────────────── */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 10px 6px 8px',
+          borderRadius: 12,
+          background: open ? '#e6f5ef' : '#f5f2eb',
+          border: `1.5px solid ${open ? '#a8d8c0' : '#e5e0d6'}`,
+          cursor: 'pointer',
+          boxShadow: open ? '0 0 0 3px rgba(15,106,75,0.08)' : 'none',
+          transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
+          fontFamily: 'inherit',
+        }}
+        onMouseEnter={e => { if (!open) e.currentTarget.style.background = '#ede9e0'; }}
+        onMouseLeave={e => { if (!open) e.currentTarget.style.background = '#f5f2eb'; }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Switch role"
+      >
+        {/* Avatar */}
+        <div
+          style={{
+            width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+            background: 'linear-gradient(135deg,#0F6A4B,#1a8a60)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: 10, fontWeight: 800,
+            letterSpacing: active.initials.length > 1 ? '-0.5px' : '0',
+            boxShadow: '0 1px 4px rgba(15,106,75,0.3)',
+          }}
+        >
+          {active.initials}
+        </div>
+
+        {/* Name + subtitle */}
+        <div className="hidden sm:block" style={{ textAlign: 'left' }}>
+          <p style={{
+            margin: 0, fontSize: 12.5, fontWeight: 700,
+            color: '#1c1c1e', lineHeight: 1.2, whiteSpace: 'nowrap',
+          }}>
+            {active.label}
+          </p>
+          <p style={{
+            margin: 0, fontSize: 10, color: '#999',
+            lineHeight: 1.2, whiteSpace: 'nowrap',
+          }}>
+            {active.subtitle}
+          </p>
+        </div>
+
+        {/* Chevron */}
+        <ChevronDown
+          size={13}
+          style={{
+            color: '#aaa', flexShrink: 0,
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease',
+          }}
+        />
+      </button>
+
+      {/* ── Dropdown menu ───────────────────────────────────────── */}
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: 0,
+            width: 220,
+            background: '#fff',
+            borderRadius: 16,
+            border: '1px solid #ede9e0',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+            overflow: 'hidden',
+            zIndex: 200,
+            /* Entrance animation via CSS — no extra deps */
+            animation: 'roleDropIn 0.18s cubic-bezier(0.22,1,0.36,1) both',
+          }}
+        >
+          {/* Menu header */}
+          <div style={{
+            padding: '10px 14px 8px',
+            borderBottom: '1px solid #f5f2ec',
+          }}>
+            <p style={{
+              margin: 0, fontSize: 10, fontWeight: 800,
+              color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.7px',
+            }}>
+              Switch Role
+            </p>
+          </div>
+
+          {/* Role options */}
+          {ROLES.map((role) => {
+            const Icon = role.icon;
+            const isActive = role.id === currentUser;
+            return (
+              <button
+                key={role.id}
+                role="option"
+                aria-selected={isActive}
+                onClick={() => handleSelect(role.id)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '9px 14px',
+                  background: isActive ? '#f0faf5' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  boxShadow: 'none',
+                  transition: 'background 0.12s',
+                  borderLeft: isActive ? `3px solid #0F6A4B` : '3px solid transparent',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) e.currentTarget.style.background = '#faf8f4';
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                {/* Role icon badge */}
+                <div style={{
+                  width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                  background: isActive ? role.bg : '#f5f2eb',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.12s',
+                }}>
+                  <Icon size={14} style={{ color: isActive ? role.color : '#aaa' }} />
+                </div>
+
+                {/* Label + subtitle */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    margin: 0, fontSize: 13, fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#111' : '#444', lineHeight: 1.2,
+                  }}>
+                    {role.label}
+                  </p>
+                  <p style={{
+                    margin: 0, fontSize: 10.5,
+                    color: isActive ? '#0F6A4B' : '#aaa', lineHeight: 1.2,
+                  }}>
+                    {role.subtitle}
+                  </p>
+                </div>
+
+                {/* Active checkmark */}
+                {isActive && (
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                    background: '#0F6A4B',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Check size={11} color="white" strokeWidth={3} />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Footer hint */}
+          <div style={{
+            padding: '8px 14px 10px',
+            borderTop: '1px solid #f5f2ec',
+          }}>
+            <p style={{
+              margin: 0, fontSize: 10, color: '#ccc', textAlign: 'center',
+            }}>
+              UI only · no authentication
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Keyframe for dropdown entrance */}
+      <style>{`
+        @keyframes roleDropIn {
+          from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);    }
+        }
+      `}</style>
+    </div>
+  );
 }
 
-/* ── Component ──────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   Topbar — unchanged except user profile replaced with RoleDropdown
+══════════════════════════════════════════════════════════════════ */
 export default function Topbar({ currentPage, currentUser, onUserChange }) {
   const [query, setQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -49,7 +301,7 @@ export default function Topbar({ currentPage, currentUser, onUserChange }) {
         boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Page title — desktop only (mobile space taken by hamburger) */}
+      {/* Page title */}
       <div className="hidden md:flex flex-col justify-center flex-shrink-0 min-w-0">
         <span className="text-[15px] font-bold text-stone-800 leading-tight truncate">
           {PAGE_LABELS[currentPage] ?? 'FinEdge ERP'}
@@ -81,29 +333,18 @@ export default function Topbar({ currentPage, currentUser, onUserChange }) {
             onBlur={() => setSearchFocused(false)}
             placeholder="Search anything…"
             style={{
-              flex: 1,
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontSize: '13px',
-              color: '#1c1c1e',
-              minWidth: 0,
-              fontFamily: 'inherit',
+              flex: 1, background: 'transparent', border: 'none',
+              outline: 'none', fontSize: '13px', color: '#1c1c1e',
+              minWidth: 0, fontFamily: 'inherit',
             }}
           />
           {query && (
             <button
               onClick={() => setQuery('')}
               style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                boxShadow: 'none',
-                cursor: 'pointer',
-                color: '#aaa',
-                display: 'flex',
-                alignItems: 'center',
-                flexShrink: 0,
+                background: 'none', border: 'none', padding: 0,
+                boxShadow: 'none', cursor: 'pointer', color: '#aaa',
+                display: 'flex', alignItems: 'center', flexShrink: 0,
               }}
             >
               <X size={13} />
@@ -112,16 +353,13 @@ export default function Topbar({ currentPage, currentUser, onUserChange }) {
         </div>
       </div>
 
-      {/* Spacer pushes right-side controls to the edge */}
+      {/* Spacer */}
       <div className="flex-1" />
 
       {/* ── Date pill ─────────────────────────────────────────── */}
       <div
         className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
-        style={{
-          background: '#f0ede6',
-          border: '1px solid #e5e0d6',
-        }}
+        style={{ background: '#f0ede6', border: '1px solid #e5e0d6' }}
       >
         <CalendarDays size={12} style={{ color: '#0F6A4B', flexShrink: 0 }} />
         <span className="text-[11.5px] font-medium" style={{ color: '#555' }}>
@@ -131,74 +369,21 @@ export default function Topbar({ currentPage, currentUser, onUserChange }) {
 
       {/* ── Notifications ─────────────────────────────────────── */}
       <button
-        className="relative w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0
-                   transition-colors"
+        className="relative w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0"
         style={{ background: '#f5f2eb', border: '1px solid #ede9e0', boxShadow: 'none' }}
         onMouseEnter={e => e.currentTarget.style.background = '#ede9e0'}
         onMouseLeave={e => e.currentTarget.style.background = '#f5f2eb'}
         aria-label="Notifications"
       >
         <Bell size={15} style={{ color: '#666' }} />
-        {/* Unread badge */}
         <span
           className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
           style={{ background: '#e74c3c', border: '1.5px solid #fff' }}
         />
       </button>
 
-      {/* ── User profile ──────────────────────────────────────── */}
-      <div
-        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl flex-shrink-0 cursor-pointer
-                   transition-colors"
-        style={{ background: '#f5f2eb', border: '1px solid #ede9e0' }}
-        onMouseEnter={e => e.currentTarget.style.background = '#ede9e0'}
-        onMouseLeave={e => e.currentTarget.style.background = '#f5f2eb'}
-      >
-        {/* Avatar */}
-        <div
-          className="w-6 h-6 rounded-lg flex items-center justify-center
-                     text-white text-[11px] font-bold flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#0F6A4B,#1a8a60)' }}
-        >
-          {initials(currentUser)}
-        </div>
-
-        {/* Name + role */}
-        <div className="hidden sm:block">
-          <p className="text-[12.5px] font-semibold text-stone-800 leading-tight capitalize">
-            {currentUser}
-          </p>
-          <p className="text-[10px] text-stone-400 leading-tight">
-            {currentUser === 'admin' ? 'Administrator' :
-             currentUser === 'accountant' ? 'Accountant' : 'Contact'}
-          </p>
-        </div>
-
-        {/* Inline select overlaid transparently for functionality */}
-        <div className="relative flex items-center flex-shrink-0">
-          <ChevronDown size={12} style={{ color: '#aaa', pointerEvents: 'none' }} />
-          <select
-            value={currentUser}
-            onChange={e => onUserChange(e.target.value)}
-            aria-label="Switch user"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              opacity: 0,
-              cursor: 'pointer',
-              width: '100%',
-              height: '100%',
-              fontSize: '13px',
-              fontFamily: 'inherit',
-              border: 'none',
-            }}
-          >
-            <option value="admin">Admin</option>
-            <option value="accountant">Accountant</option>
-            <option value="contact">Contact</option>
-          </select>
-        </div>
-      </div>
+      {/* ── Role dropdown (replaces old static profile) ───────── */}
+      <RoleDropdown currentUser={currentUser} onUserChange={onUserChange} />
     </header>
   );
 }
