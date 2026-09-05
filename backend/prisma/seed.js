@@ -16,7 +16,15 @@ async function upsertContact({ name, type, email, mobile }) {
   const existing = await prisma.contact.findFirst({
     where: email ? { email } : { name },
   });
+  await prisma.user.create({
+    data: {
+      name: 'Nimesh Pathak',
+      email: 'nimesh@example.com',
+      role: 'contact',
+    },
+  });
 
+  console.log('✓ Users created');
   if (existing) {
     return prisma.contact.update({
       where: { id: existing.id },
@@ -289,6 +297,13 @@ async function main() {
   await seedDemoPurchase(azureFurniture, officeChair);
   await seedDemoSale(nimeshPathak, officeChair);
 
+  console.log('✓ Journals created');
+  console.log('\n✅ Database seeding complete!');
+  console.log('\nTest User: admin@finedge.com (admin)');
+  console.log('Test User: accountant@finedge.com (accountant)');
+  console.log('Test User: nimesh@example.com (contact / customer-facing)');
+  console.log('Test Vendor: Azure Furniture');
+  console.log('Test Customer: Nimesh Pathak');
   console.log('\n✅ Database seeding complete (safe to run again).');
 }
 

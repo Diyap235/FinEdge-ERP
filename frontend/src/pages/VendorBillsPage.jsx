@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { vendorBillsAPI } from '../services/api';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ScanLine } from 'lucide-react';
 
-export default function VendorBillsPage() {
+export default function VendorBillsPage({ onNavigate, currentUser }) {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedBill, setSelectedBill] = useState(null);
   const [paymentData, setPaymentData] = useState({ amount: '', paymentType: 'bank' });
+
+  const rawRole = typeof currentUser === 'object' ? currentUser?.role : currentUser;
+  const role = String(rawRole || '').toLowerCase().trim();
+  const isAuthorizedRole = role === 'admin' || role === 'accountant';
 
   useEffect(() => { loadBills(); }, []);
 
@@ -51,13 +55,30 @@ export default function VendorBillsPage() {
           <h1 className="page-title">Vendor Bills</h1>
           <p className="page-subtitle">{bills.length} bill{bills.length !== 1 ? 's' : ''}</p>
         </div>
-        {selectedBill && (
-          <button className="action-btn" onClick={() => setSelectedBill(null)}
-            style={{ background: 'transparent', color: '#555', border: '1.5px solid #d6d1c9', boxShadow: 'none' }}>
-            <ChevronLeft size={14} />
-            Back to list
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {!selectedBill && isAuthorizedRole && (
+            <button
+              className="action-btn"
+              onClick={() => onNavigate?.('ocr-scanner')}
+              style={{
+                background: 'linear-gradient(135deg, #0F6A4B, #168a62)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(15,106,75,0.25)',
+              }}
+            >
+              <ScanLine size={14} />
+              AI Invoice Scanner
+            </button>
+          )}
+          {selectedBill && (
+            <button className="action-btn" onClick={() => setSelectedBill(null)}
+              style={{ background: 'transparent', color: '#555', border: '1.5px solid #d6d1c9', boxShadow: 'none' }}>
+              <ChevronLeft size={14} />
+              Back to list
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <div className="error">{error}</div>}

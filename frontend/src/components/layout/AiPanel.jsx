@@ -10,19 +10,170 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { aiAPI } from '../../services/api';
+import ErpTable from '../common/ErpTable';
 
 /* ── Suggestion prompts ─────────────────────────────────────────── */
-const SUGGESTIONS = [
-  'Summarize this month\'s financials',
-  'Which expenses are highest?',
-  'Create a journal entry',
-  'Show budget vs actual',
-  'Extract invoice details',
-];
+const SUGGESTIONS_BY_ROLE = {
+  admin: [
+    "Show me today's sales",
+    'Show me total revenue this month',
+    'Show me low stock products',
+    'Show me pending invoices',
+  ],
+  accountant: [
+    'Show me pending invoices',
+    'Show me vendor bills',
+    'Show me payments',
+    "Show me today's sales",
+  ],
+  contact: [
+    'Show me my orders',
+    'Show me my invoices',
+    'Show me products',
+    'What is the status of my latest order?',
+  ],
+  user: [
+    'Show me my orders',
+    'Show me my invoices',
+    'Show me products',
+    'What is the status of my latest order?',
+  ],
+};
+
+/* ── Client-side table fallback parser (for 2+ records) ──────────── */
+function parseClientTable(lines) {
+  if (!Array.isArray(lines) || lines.length < 3) return null;
+
+  const clean = (s) => (s ? String(s).replace(/\*\*/g, '').replace(/\*/g, '').trim() : '');
+
+  const isSep = (l) => {
+    const t = l.trim();
+    if (!t.includes('-')) return false;
+    return t.split('|').map((s) => s.trim()).every((p) => p === '' || /^:?-+:?$/.test(p));
+  };
+
+  const splitCells = (l) => {
+    let c = l.split('|').map(clean);
+    if (c.length > 0 && c[0] === '') c.shift();
+    if (c.length > 0 && c[c.length - 1] === '') c.pop();
+    return c;
+  };
+
+  // 1. Markdown table with separator line
+  const sepIdx = lines.findIndex(isSep);
+  if (sepIdx > 0) {
+    const columns = splitCells(lines[sepIdx - 1]);
+    if (columns.length >= 2) {
+      const rows = [];
+      let i = sepIdx + 1;
+      while (i < lines.length) {
+        if (!lines[i].includes('|') || isSep(lines[i])) break;
+        const r = splitCells(lines[i]);
+        if (r.length >= 2) {
+          while (r.length < columns.length) r.push('');
+          rows.push(r.slice(0, columns.length));
+        } else break;
+        i++;
+      }
+      if (rows.length >= 2) {
+        const remaining = [...lines.slice(0, sepIdx - 1), ...lines.slice(i)];
+        return { table: { columns, rows }, remaining };
+      }
+    }
+  }
+
+  // 2. Pipe-separated lines (header + 2+ rows)
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('|') && !isSep(lines[i])) {
+      const header = splitCells(lines[i]);
+      if (header.length >= 2) {
+        const rows = [];
+        let j = i + 1;
+        while (j < lines.length && lines[j].includes('|') && !isSep(lines[j])) {
+          const r = splitCells(lines[j]);
+          if (r.length === header.length) {
+            rows.push(r);
+            j++;
+          } else break;
+        }
+        if (rows.length >= 2) {
+          const remaining = [...lines.slice(0, i), ...lines.slice(j)];
+          return { table: { columns: header, rows }, remaining };
+        }
+      }
+    }
+  }
+
+  return null;
+}
 
 /* ── Single chat message bubble ────────────────────────────────── */
-function MessageBubble({ role, text }) {
+function MessageBubble({ role, text, reply, details, table }) {
   const isUser = role === 'user';
+
+  // Strip any accidental markdown asterisks so they are NEVER displayed
+  const stripAsterisks = (s) =>
+    s ? String(s).replace(/\*\*/g, '').replace(/\*/g, '').trim() : '';
+
+  let mainTitle = '';
+  let subDetails = [];
+  let tableData = null;
+
+  if (isUser) {
+    mainTitle = text || reply || '';
+  } else {
+    // Assistant message
+    let rawTitle = '';
+    let rawDetails = [];
+
+    if (reply !== undefined && reply !== null) {
+      rawTitle = stripAsterisks(reply);
+      rawDetails = Array.isArray(details) ? details : [];
+    } else if (typeof text === 'string') {
+      const lines = text.split('\n').map(stripAsterisks).filter(Boolean);
+      rawTitle = lines[0] || '';
+      rawDetails = lines.slice(1);
+    }
+
+    // Split any multi-line string in rawTitle so the main title is strictly the first line
+    const titleLines = rawTitle.split('\n').map(stripAsterisks).filter(Boolean);
+    mainTitle = titleLines[0] || '';
+    const extraTitleLines = titleLines.slice(1);
+
+    // Flatten any multi-line strings in rawDetails into individual clean lines without blanks
+    const flatDetails = [
+      ...extraTitleLines,
+      ...rawDetails.flatMap((d) =>
+        typeof d === 'string'
+          ? d.split('\n').map(stripAsterisks).filter(Boolean)
+          : [stripAsterisks(d)]
+      ),
+    ].filter(Boolean);
+
+    // Direct table from backend payload
+    if (
+      table &&
+      Array.isArray(table.columns) &&
+      table.columns.length >= 2 &&
+      Array.isArray(table.rows) &&
+      table.rows.length >= 2
+    ) {
+      tableData = table;
+      subDetails = flatDetails;
+    } else {
+      // Fallback: detect table in flatDetails
+      const parsed = parseClientTable(flatDetails);
+      if (parsed) {
+        tableData = parsed.table;
+        subDetails = parsed.remaining.map(stripAsterisks).filter(Boolean);
+      } else {
+        subDetails = flatDetails;
+      }
+    }
+  }
+
+  const hasTable = Boolean(tableData && tableData.rows?.length >= 2);
+
   return (
     <div
       style={{
@@ -35,10 +186,16 @@ function MessageBubble({ role, text }) {
       {!isUser && (
         <div
           style={{
-            width: 28, height: 28, borderRadius: 10, flexShrink: 0,
+            width: 28,
+            height: 28,
+            borderRadius: 10,
+            flexShrink: 0,
             background: 'linear-gradient(135deg,#0F6A4B,#1a8a60)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginRight: 8, marginTop: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+            marginTop: 2,
             boxShadow: '0 2px 6px rgba(15,106,75,0.3)',
           }}
         >
@@ -47,8 +204,9 @@ function MessageBubble({ role, text }) {
       )}
       <div
         style={{
-          maxWidth: '78%',
-          padding: '9px 13px',
+          maxWidth: !isUser && hasTable ? '95%' : '82%',
+          width: !isUser && hasTable ? '95%' : 'auto',
+          padding: '10px 14px',
           borderRadius: isUser ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
           background: isUser
             ? 'linear-gradient(135deg,#0F6A4B,#1a8a60)'
@@ -59,16 +217,59 @@ function MessageBubble({ role, text }) {
           boxShadow: isUser
             ? '0 2px 8px rgba(15,106,75,0.25)'
             : '0 1px 3px rgba(0,0,0,0.06)',
+          overflow: 'hidden',
         }}
       >
-        {text}
+        {isUser ? (
+          <div style={{ margin: 0, padding: 0, lineHeight: 1.5 }}>{mainTitle}</div>
+        ) : (
+          <div style={{ margin: 0, padding: 0, lineHeight: 1.5 }}>
+            {mainTitle && (
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  color: '#1c1c1e',
+                  margin: 0,
+                  padding: 0,
+                  lineHeight: 1.5,
+                  marginBottom: hasTable ? 6 : 0,
+                }}
+              >
+                {mainTitle}
+              </div>
+            )}
+
+            {hasTable && (
+              <ErpTable columns={tableData.columns} rows={tableData.rows} />
+            )}
+
+            {subDetails.map((detail, idx) => (
+              <div
+                key={idx}
+                style={{
+                  fontWeight: 400,
+                  fontSize: 12.5,
+                  color: '#333',
+                  margin: 0,
+                  padding: 0,
+                  lineHeight: 1.5,
+                  marginTop: idx === 0 && hasTable ? 6 : 0,
+                }}
+              >
+                {detail}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 /* ── Main AI Panel component ────────────────────────────────────── */
-export default function AiPanel({ onClose, userName = 'Arjun' }) {
+export default function AiPanel({ onClose, userName = 'Arjun', role = 'admin' }) {
+  const SUGGESTIONS = SUGGESTIONS_BY_ROLE[role] || SUGGESTIONS_BY_ROLE.admin;
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [typing, setTyping] = useState(false);
@@ -97,7 +298,9 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
       // Build conversation history for API
       const conversation = messages.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.text,
+        content:
+          msg.text ||
+          [msg.reply, ...(msg.details || [])].filter(Boolean).join('\n'),
       }));
 
       // Call AI API
@@ -108,24 +311,48 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
       if (response.data.success) {
         setMessages(prev => [
           ...prev,
-          { role: 'assistant', text: response.data.reply },
+          {
+            role: 'assistant',
+            reply: response.data.reply,
+            details: Array.isArray(response.data.details) ? response.data.details : [],
+            table: response.data.table || null,
+          },
         ]);
       } else {
         throw new Error(response.data.error || 'Failed to get response');
       }
     } catch (err) {
       setTyping(false);
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to connect to AI service';
-      setError(errorMessage);
-      
-      // Add error message to chat
-      setMessages(prev => [
-        ...prev,
-        { 
-          role: 'assistant', 
-          text: `Sorry, I encountered an error: ${errorMessage}. Please try again.` 
-        },
-      ]);
+      const isPermissionDenied =
+        err.response?.status === 403 ||
+        err.response?.data?.error?.includes('permission') ||
+        err.response?.data?.error?.includes("don't have access");
+
+      if (isPermissionDenied) {
+        const replyText =
+          err.response?.data?.error ||
+          "I don't have access to show you this information.";
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', reply: replyText, details: [] },
+        ]);
+      } else {
+        const errorMessage =
+          err.response?.data?.error ||
+          err.message ||
+          'Failed to connect to AI service';
+        setError(errorMessage);
+
+        // Add error message to chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            reply: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
+            details: [],
+          },
+        ]);
+      }
     }
   };
 
@@ -353,7 +580,14 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
             )}
 
             {messages.map((msg, i) => (
-              <MessageBubble key={i} role={msg.role} text={msg.text} />
+              <MessageBubble
+                key={i}
+                role={msg.role}
+                text={msg.text}
+                reply={msg.reply}
+                details={msg.details}
+                table={msg.table}
+              />
             ))}
 
             {/* Typing indicator */}

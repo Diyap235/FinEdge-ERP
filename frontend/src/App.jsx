@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
 import AiPanel from './components/layout/AiPanel';
+import { setCurrentUserId, usersAPI } from './services/api';
 import Dashboard from './pages/Dashboard';
 import ContactsPage from './pages/ContactsPage';
 import ProductsPage from './pages/ProductsPage';
@@ -15,6 +16,7 @@ import CustomerInvoicesPage from './pages/CustomerInvoicesPage';
 import PaymentsPage from './pages/PaymentsPage';
 import JournalEntriesPage from './pages/JournalEntriesPage';
 import ReportsPage from './pages/ReportsPage';
+import AiInvoiceScannerPage from './pages/AiInvoiceScannerPage';
 import dayBg from './assets/backgrounds/finedge-day.webp';
 import nightBg from './assets/backgrounds/finedge-night.webp';
 
@@ -29,6 +31,7 @@ const PAGES = {
   VENDOR_BILLS:       'vendor-bills',
   SALES_ORDERS:       'sales-orders',
   CUSTOMER_INVOICES:  'customer-invoices',
+  OCR_SCANNER:        'ocr-scanner',
   PAYMENTS:           'payments',
   JOURNAL_ENTRIES:    'journal-entries',
   REPORTS:            'reports',
@@ -38,6 +41,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(PAGES.DASHBOARD);
   const [currentUser, setCurrentUser] = useState('admin');
   const [aiOpen, setAiOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
   const [isNight, setIsNight] = useState(
     () => localStorage.getItem('finedge-bg') === 'night'
   );
@@ -50,22 +54,52 @@ function App() {
     });
   };
 
-  // ── Page renderer — unchanged ─────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+
+    usersAPI
+      .getAll()
+      .then((response) => {
+        if (cancelled) return;
+        const users = Array.isArray(response.data) ? response.data : [];
+        const match = users.find((user) => {
+          const role = String(user.role || '').toLowerCase();
+          if (currentUser === 'contact') {
+            return role === 'contact' || role === 'user';
+          }
+          return role === currentUser;
+        });
+        setSessionUser(match || null);
+        setCurrentUserId(match?.id ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSessionUser(null);
+        setCurrentUserId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
+
+  // ── Page renderer ─────────────────────────────────────────────────────────
   const renderPage = () => {
     switch (currentPage) {
-      case PAGES.DASHBOARD:          return <Dashboard />;
+      case PAGES.DASHBOARD:          return <Dashboard onNavigate={setCurrentPage} currentUser={currentUser} />;
       case PAGES.CONTACTS:           return <ContactsPage />;
       case PAGES.PRODUCTS:           return <ProductsPage />;
       case PAGES.ACCOUNTS:           return <AccountsPage />;
       case PAGES.JOURNALS:           return <JournalsPage />;
       case PAGES.PURCHASE_ORDERS:    return <PurchaseOrdersPage />;
-      case PAGES.VENDOR_BILLS:       return <VendorBillsPage />;
+      case PAGES.VENDOR_BILLS:       return <VendorBillsPage onNavigate={setCurrentPage} currentUser={currentUser} />;
       case PAGES.SALES_ORDERS:       return <SalesOrdersPage />;
-      case PAGES.CUSTOMER_INVOICES:  return <CustomerInvoicesPage />;
+      case PAGES.CUSTOMER_INVOICES:  return <CustomerInvoicesPage onNavigate={setCurrentPage} currentUser={currentUser} />;
+      case PAGES.OCR_SCANNER:        return <AiInvoiceScannerPage currentUser={currentUser} onNavigate={setCurrentPage} />;
       case PAGES.PAYMENTS:           return <PaymentsPage />;
       case PAGES.JOURNAL_ENTRIES:    return <JournalEntriesPage />;
       case PAGES.REPORTS:            return <ReportsPage />;
-      default:                       return <Dashboard />;
+      default:                       return <Dashboard onNavigate={setCurrentPage} currentUser={currentUser} />;
     }
   };
 
@@ -92,6 +126,7 @@ function App() {
         onNavigate={setCurrentPage}
         aiOpen={aiOpen}
         onAiToggle={() => setAiOpen(v => !v)}
+        currentUser={currentUser}
       />
 
       {/* Right column: topbar + scrollable content */}
@@ -124,7 +159,8 @@ function App() {
         {aiOpen && (
           <AiPanel
             onClose={() => setAiOpen(false)}
-            userName={currentUser === 'admin' ? 'Arjun' : currentUser}
+            userName={sessionUser?.name || (currentUser === 'admin' ? 'Arjun' : currentUser)}
+            role={currentUser}
           />
         )}
       </AnimatePresence>

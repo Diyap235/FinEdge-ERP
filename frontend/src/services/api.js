@@ -6,6 +6,23 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
+let currentUserId = null;
+
+export function setCurrentUserId(userId) {
+  currentUserId = userId ?? null;
+}
+
+api.interceptors.request.use((config) => {
+  if (currentUserId) {
+    config.headers['X-User-Id'] = String(currentUserId);
+  }
+  return config;
+});
+
+export const usersAPI = {
+  getAll: () => api.get('/users'),
+};
+
 export const contactsAPI = {
   getAll: () => api.get('/contacts'),
   create: (data) => api.post('/contacts', data),
@@ -88,6 +105,14 @@ export const reportsAPI = {
 export const aiAPI = {
   chat: (message, conversation = []) => 
     api.post('/ai/chat', { message, conversation }),
+};
+
+export const ocrAPI = {
+  processFile: (formData) =>
+    api.post('/ocr/process', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  confirmInvoice: (data) => api.post('/ocr/confirm', data),
 };
 
 export default api;

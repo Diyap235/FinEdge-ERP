@@ -16,6 +16,7 @@ import {
   X,
   TrendingUp,
   Sparkles,
+  ScanLine,
 } from 'lucide-react';
 
 /* ── Navigation definition ─────────────────────────────────────────
@@ -23,9 +24,10 @@ import {
 ─────────────────────────────────────────────────────────────────── */
 const NAV_GROUPS = [
   {
-    label: null, // no section header for top-level
+    label: null, // top-level immediate visibility
     items: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'dashboard',   label: 'Dashboard',          icon: LayoutDashboard },
+      { id: 'ocr-scanner', label: 'AI Invoice Scanner', icon: ScanLine, minRole: 'accountant' },
     ],
   },
   {
@@ -52,17 +54,21 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Finance',
+    label: 'Finance & AI',
     items: [
-      { id: 'payments',        label: 'Payments',        icon: CreditCard },
-      { id: 'journal-entries', label: 'Journal Entries', icon: Pencil     },
-      { id: 'reports',         label: 'Reports',         icon: BarChart2  },
+      { id: 'payments',        label: 'Payments',           icon: CreditCard },
+      { id: 'journal-entries', label: 'Journal Entries',    icon: Pencil     },
+      { id: 'reports',         label: 'Reports',            icon: BarChart2  },
     ],
   },
 ];
 
 /* ── Inner content — shared between desktop aside & mobile drawer ── */
-function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle }) {
+function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle, currentUser }) {
+  const rawRole = typeof currentUser === 'object' ? currentUser?.role : currentUser;
+  const role = String(rawRole || '').toLowerCase().trim();
+  const isAuthorizedRole = role === 'admin' || role === 'accountant';
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
@@ -90,51 +96,62 @@ function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle }
       {/* Nav ---------------------------------------------------------- */}
       <nav className="flex-1 overflow-y-auto py-4 px-3"
            style={{ scrollbarWidth: 'thin', scrollbarColor: '#d6d1c9 transparent' }}>
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
-            {/* Section label */}
-            {group.label && (
-              <p className="px-3 mb-1.5 text-[10px] font-bold text-stone-400 uppercase tracking-widest select-none">
-                {group.label}
-              </p>
-            )}
+        {NAV_GROUPS.map((group, gi) => {
+          const visibleItems = group.items.filter(item => {
+            if (item.minRole === 'accountant') {
+              return isAuthorizedRole;
+            }
+            return true;
+          });
 
-            <div className="space-y-0.5">
-              {group.items.map(({ id, label, icon: Icon }) => {
-                const active = currentPage === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => { onNavigate(id); onClose?.(); }}
-                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl
-                               text-left text-[13px] font-medium outline-none transition-all duration-150"
-                    style={active ? {
-                      background: '#0F6A4B',
-                      color: '#fff',
-                      boxShadow: '0 2px 8px rgba(15,106,75,0.30)',
-                    } : {
-                      color: '#555',
-                      background: 'transparent',
-                    }}
-                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#ede9e0'; }}
-                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <Icon
-                      size={15}
-                      style={{ color: active ? '#fff' : '#999', flexShrink: 0 }}
-                    />
-                    <span style={{ color: active ? '#fff' : '#444' }}>{label}</span>
+          if (visibleItems.length === 0) return null;
 
-                    {/* Active indicator dot */}
-                    {active && (
-                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-300 flex-shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
+          return (
+            <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
+              {/* Section label */}
+              {group.label && (
+                <p className="px-3 mb-1.5 text-[10px] font-bold text-stone-400 uppercase tracking-widest select-none">
+                  {group.label}
+                </p>
+              )}
+
+              <div className="space-y-0.5">
+                {visibleItems.map(({ id, label, icon: Icon }) => {
+                  const active = currentPage === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { onNavigate(id); onClose?.(); }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl
+                                 text-left text-[13px] font-medium outline-none transition-all duration-150"
+                      style={active ? {
+                        background: '#0F6A4B',
+                        color: '#fff',
+                        boxShadow: '0 2px 8px rgba(15,106,75,0.30)',
+                      } : {
+                        color: '#555',
+                        background: 'transparent',
+                      }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#ede9e0'; }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <Icon
+                        size={15}
+                        style={{ color: active ? '#fff' : '#999', flexShrink: 0 }}
+                      />
+                      <span style={{ color: active ? '#fff' : '#444' }}>{label}</span>
+
+                      {/* Active indicator dot */}
+                      {active && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-300 flex-shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom quote ------------------------------------------------- */}
@@ -199,7 +216,7 @@ function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle }
 }
 
 /* ── Main export ───────────────────────────────────────────────── */
-export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle }) {
+export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle, currentUser }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -214,6 +231,7 @@ export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle })
           onNavigate={onNavigate}
           aiOpen={aiOpen}
           onAiToggle={onAiToggle}
+          currentUser={currentUser}
         />
       </aside>
 
@@ -256,6 +274,7 @@ export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle })
             onClose={() => setMobileOpen(false)}
             aiOpen={aiOpen}
             onAiToggle={onAiToggle}
+            currentUser={currentUser}
           />
         </aside>
       )}
