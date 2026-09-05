@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
 import AiPanel from './components/layout/AiPanel';
+import { setCurrentUserId, usersAPI } from './services/api';
 import Dashboard from './pages/Dashboard';
 import ContactsPage from './pages/ContactsPage';
 import ProductsPage from './pages/ProductsPage';
@@ -36,6 +37,36 @@ function App() {
   const [currentPage, setCurrentPage] = useState(PAGES.DASHBOARD);
   const [currentUser, setCurrentUser] = useState('admin');
   const [aiOpen, setAiOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    usersAPI
+      .getAll()
+      .then((response) => {
+        if (cancelled) return;
+        const users = Array.isArray(response.data) ? response.data : [];
+        const match = users.find((user) => {
+          const role = String(user.role || '').toLowerCase();
+          if (currentUser === 'contact') {
+            return role === 'contact' || role === 'user';
+          }
+          return role === currentUser;
+        });
+        setSessionUser(match || null);
+        setCurrentUserId(match?.id ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSessionUser(null);
+        setCurrentUserId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   // ── Page renderer — unchanged ─────────────────────────────────────────────
   const renderPage = () => {
@@ -99,7 +130,8 @@ function App() {
         {aiOpen && (
           <AiPanel
             onClose={() => setAiOpen(false)}
-            userName={currentUser === 'admin' ? 'Arjun' : currentUser}
+            userName={sessionUser?.name || (currentUser === 'admin' ? 'Arjun' : currentUser)}
+            role={currentUser}
           />
         )}
       </AnimatePresence>

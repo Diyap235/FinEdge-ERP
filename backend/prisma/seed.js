@@ -38,6 +38,14 @@ async function main() {
     },
   });
 
+  await prisma.user.create({
+    data: {
+      name: 'Nimesh Pathak',
+      email: 'nimesh@example.com',
+      role: 'contact',
+    },
+  });
+
   console.log('✓ Users created');
 
   // Create Contacts
@@ -178,6 +186,8 @@ async function main() {
   console.log('✓ Journals created');
   console.log('\n✅ Database seeding complete!');
   console.log('\nTest User: admin@finedge.com (admin)');
+  console.log('Test User: accountant@finedge.com (accountant)');
+  console.log('Test User: nimesh@example.com (contact / customer-facing)');
   console.log('Test Vendor: Azure Furniture');
   console.log('Test Customer: Nimesh Pathak');
 }

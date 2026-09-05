@@ -73,7 +73,7 @@ try {
       // Test actual API call
       console.log('   🧪 Testing API call...');
       const completion = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: process.env.GROQ_MODEL || 'qwen/qwen3.8-27b',
         messages: [{ role: 'user', content: 'Say hi' }],
         max_tokens: 20,
       });
