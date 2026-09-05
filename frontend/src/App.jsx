@@ -38,7 +38,17 @@ function App() {
   const [currentPage, setCurrentPage] = useState(PAGES.DASHBOARD);
   const [currentUser, setCurrentUser] = useState('admin');
   const [aiOpen, setAiOpen] = useState(false);
-  const [isNight, setIsNight] = useState(false);
+  const [isNight, setIsNight] = useState(
+    () => localStorage.getItem('finedge-bg') === 'night'
+  );
+
+  const toggleBg = () => {
+    setIsNight(prev => {
+      const next = !prev;
+      localStorage.setItem('finedge-bg', next ? 'night' : 'day');
+      return next;
+    });
+  };
 
   // ── Page renderer — unchanged ─────────────────────────────────────────────
   const renderPage = () => {
@@ -73,6 +83,7 @@ function App() {
         backgroundPosition:   'center',
         backgroundRepeat:     'no-repeat',
         backgroundAttachment: 'fixed',
+        transition:           'background-image 0.3s ease',
       }}
     >
       {/* Fixed left sidebar — floats above the background */}
@@ -97,7 +108,7 @@ function App() {
           currentUser={currentUser}
           onUserChange={setCurrentUser}
           isNight={isNight}
-          onBgToggle={() => setIsNight(v => !v)}
+          onBgToggle={toggleBg}
         />
 
         {/* Scrollable page area — offset for topbar height */}
