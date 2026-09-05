@@ -15,7 +15,10 @@ import customerInvoiceRoutes from './routes/customerInvoice.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import journalEntryRoutes from './routes/journalEntry.routes.js';
 import reportRoutes from './routes/report.routes.js';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 49a0468 (refactor: remove unused dashboard routes import)
 import aiRoutes from './routes/ai.routes.js';
 
 dotenv.config();
