@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
+import AiPanel from './components/layout/AiPanel';
 import Dashboard from './pages/Dashboard';
 import ContactsPage from './pages/ContactsPage';
 import ProductsPage from './pages/ProductsPage';
@@ -33,6 +35,7 @@ const PAGES = {
 function App() {
   const [currentPage, setCurrentPage] = useState(PAGES.DASHBOARD);
   const [currentUser, setCurrentUser] = useState('admin');
+  const [aiOpen, setAiOpen] = useState(false);
 
   // ── Page renderer — unchanged ─────────────────────────────────────────────
   const renderPage = () => {
@@ -58,11 +61,23 @@ function App() {
     <div className="flex min-h-screen" style={{ background: '#F6F3EC' }}>
 
       {/* Fixed left sidebar */}
-      <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+      <Sidebar
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
+        aiOpen={aiOpen}
+        onAiToggle={() => setAiOpen(v => !v)}
+      />
 
-      {/* Right column: topbar + scrollable content */}
-      <div className="flex flex-col flex-1 md:ml-[260px]">
-
+      {/* Right column: topbar + scrollable content.
+          When AI panel is open, shrink right margin by 420px so content
+          doesn't slide under the panel. Transition matches panel spring. */}
+      <div
+        className="flex flex-col flex-1 md:ml-[252px]"
+        style={{
+          marginRight: aiOpen ? 420 : 0,
+          transition: 'margin-right 0.3s ease',
+        }}
+      >
         {/* Fixed topbar */}
         <Topbar
           currentPage={currentPage}
@@ -77,8 +92,17 @@ function App() {
             {renderPage()}
           </div>
         </main>
-
       </div>
+
+      {/* AI Copilot panel — slides in from the right */}
+      <AnimatePresence>
+        {aiOpen && (
+          <AiPanel
+            onClose={() => setAiOpen(false)}
+            userName={currentUser === 'admin' ? 'Arjun' : currentUser}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

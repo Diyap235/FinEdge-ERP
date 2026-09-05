@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 
 /* ── Navigation definition ─────────────────────────────────────────
@@ -61,7 +62,7 @@ const NAV_GROUPS = [
 ];
 
 /* ── Inner content — shared between desktop aside & mobile drawer ── */
-function SidebarContent({ currentPage, onNavigate, onClose }) {
+function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle }) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
@@ -139,6 +140,49 @@ function SidebarContent({ currentPage, onNavigate, onClose }) {
       {/* Bottom quote ------------------------------------------------- */}
       <div className="flex-shrink-0 px-5 py-5"
            style={{ borderTop: '1px solid #e8e3d8' }}>
+
+        {/* AI Assistant toggle — pinned just above the quote */}
+        <button
+          onClick={() => { onAiToggle(); onClose?.(); }}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl
+                     text-left text-[13px] font-medium outline-none transition-all duration-150 mb-4"
+          style={aiOpen ? {
+            background: 'linear-gradient(135deg,#0F6A4B,#1a8a60)',
+            color: '#fff',
+            boxShadow: '0 2px 10px rgba(15,106,75,0.35)',
+          } : {
+            background: '#f0ede6',
+            color: '#444',
+            border: '1px solid #e5e0d6',
+          }}
+          onMouseEnter={e => {
+            if (!aiOpen) e.currentTarget.style.background = '#e6f5ef';
+          }}
+          onMouseLeave={e => {
+            if (!aiOpen) e.currentTarget.style.background = '#f0ede6';
+          }}
+        >
+          <Sparkles
+            size={15}
+            style={{
+              flexShrink: 0,
+              color: aiOpen ? '#a8f0cc' : '#0F6A4B',
+            }}
+          />
+          <span style={{ color: aiOpen ? '#fff' : '#333', flex: 1 }}>AI Assistant</span>
+          {/* Pulsing dot when open */}
+          {aiOpen && (
+            <span
+              style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: '#a8f0cc',
+                animation: 'aiBounce 1.5s ease-in-out infinite',
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </button>
+
         <p className="text-[11px] italic leading-relaxed"
            style={{ color: '#b0a898' }}>
           "Numbers move futures.<br />Every entry counts."
@@ -155,7 +199,7 @@ function SidebarContent({ currentPage, onNavigate, onClose }) {
 }
 
 /* ── Main export ───────────────────────────────────────────────── */
-export default function Sidebar({ currentPage, onNavigate }) {
+export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -165,7 +209,12 @@ export default function Sidebar({ currentPage, onNavigate }) {
         className="hidden md:flex flex-col fixed top-0 left-0 h-screen w-[252px] z-40"
         style={{ background: '#F6F3EC', borderRight: '1px solid #e8e3d8' }}
       >
-        <SidebarContent currentPage={currentPage} onNavigate={onNavigate} />
+        <SidebarContent
+          currentPage={currentPage}
+          onNavigate={onNavigate}
+          aiOpen={aiOpen}
+          onAiToggle={onAiToggle}
+        />
       </aside>
 
       {/* ── Mobile: hamburger trigger ─────────────────────────────── */}
@@ -205,6 +254,8 @@ export default function Sidebar({ currentPage, onNavigate }) {
             currentPage={currentPage}
             onNavigate={onNavigate}
             onClose={() => setMobileOpen(false)}
+            aiOpen={aiOpen}
+            onAiToggle={onAiToggle}
           />
         </aside>
       )}

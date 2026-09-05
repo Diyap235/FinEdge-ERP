@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { salesOrdersAPI, contactsAPI, productsAPI } from '../services/api';
+import { Plus, ChevronLeft, X } from 'lucide-react';
 
 export default function SalesOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -75,169 +76,258 @@ export default function SalesOrdersPage() {
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading">Loading sales orders…</div>;
 
   const selectedOrderData = orders.find((o) => o.id === selectedOrder);
 
   return (
-    <div>
-      <h2>Sales Orders</h2>
+    <div className="page-root">
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Sales Orders</h1>
+          <p className="page-subtitle">{orders.length} order{orders.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {selectedOrder && (
+            <button
+              className="action-btn"
+              onClick={() => setSelectedOrder(null)}
+              style={{ background: 'transparent', color: '#555', border: '1.5px solid #d6d1c9', boxShadow: 'none' }}
+            >
+              <ChevronLeft size={14} />
+              Back to list
+            </button>
+          )}
+          {!showForm && !selectedOrder && (
+            <button className="action-btn" onClick={() => setShowForm(true)}>
+              <Plus size={14} />
+              New Sales Order
+            </button>
+          )}
+        </div>
+      </div>
+
       {error && <div className="error">{error}</div>}
 
+      {/* ── Create form ─────────────────────────────────────────── */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="section">
-          <h3>Create Sales Order</h3>
-          <div className="form-group">
-            <label>Customer *</label>
-            <select
-              required
-              value={formData.customerId}
-              onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-            >
-              <option value="">Select Customer</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <h4>Line Items</h4>
-          {formData.lines.map((line, idx) => (
-            <div key={idx} className="section" style={{ padding: '15px', marginBottom: '10px' }}>
-              <div className="flex">
-                <div className="flex-1">
-                  <label>Product</label>
-                  <select
-                    value={line.productId}
-                    onChange={(e) => {
-                      const newLines = [...formData.lines];
-                      newLines[idx].productId = e.target.value;
-                      setFormData({ ...formData, lines: newLines });
-                    }}
+        <div className="page-card">
+          <h3 className="card-section-title">New Sales Order</h3>
+          <form
+            onSubmit={handleSubmit}
+            style={{ background: 'none', padding: 0, boxShadow: 'none', border: 'none', marginBottom: 0 }}
+          >
+            <div className="form-group">
+              <label>Customer *</label>
+              <select
+                required
+                value={formData.customerId}
+                onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+              >
+                <option value="">Select Customer</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <h4>Line Items</h4>
+            {formData.lines.map((line, idx) => (
+              <div key={idx} className="section" style={{ padding: 14, marginBottom: 10 }}>
+                <div className="flex" style={{ alignItems: 'flex-end' }}>
+                  <div className="flex-1">
+                    <label>Product</label>
+                    <select
+                      value={line.productId}
+                      onChange={(e) => {
+                        const newLines = [...formData.lines];
+                        newLines[idx].productId = e.target.value;
+                        setFormData({ ...formData, lines: newLines });
+                      }}
+                    >
+                      <option value="">Select</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label>Qty</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={line.qty}
+                      onChange={(e) => {
+                        const newLines = [...formData.lines];
+                        newLines[idx].qty = e.target.value;
+                        setFormData({ ...formData, lines: newLines });
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label>Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={line.unitPrice}
+                      onChange={(e) => {
+                        const newLines = [...formData.lines];
+                        newLines[idx].unitPrice = e.target.value;
+                        setFormData({ ...formData, lines: newLines });
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label>Tax %</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={line.tax}
+                      onChange={(e) => {
+                        const newLines = [...formData.lines];
+                        newLines[idx].tax = e.target.value;
+                        setFormData({ ...formData, lines: newLines });
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => setFormData({ ...formData, lines: formData.lines.filter((_, i) => i !== idx) })}
+                    style={{ padding: '8px 12px', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                   >
-                    <option value="">Select</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label>Qty</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={line.qty}
-                    onChange={(e) => {
-                      const newLines = [...formData.lines];
-                      newLines[idx].qty = e.target.value;
-                      setFormData({ ...formData, lines: newLines });
-                    }}
-                  />
-                </div>
-                <div className="flex-1">
-                  <label>Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={line.unitPrice}
-                    onChange={(e) => {
-                      const newLines = [...formData.lines];
-                      newLines[idx].unitPrice = e.target.value;
-                      setFormData({ ...formData, lines: newLines });
-                    }}
-                  />
-                </div>
-                <div className="flex-1">
-                  <label>Tax %</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={line.tax}
-                    onChange={(e) => {
-                      const newLines = [...formData.lines];
-                      newLines[idx].tax = e.target.value;
-                      setFormData({ ...formData, lines: newLines });
-                    }}
-                  />
+                    <X size={13} />
+                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-          <button type="button" className="secondary" onClick={() => {
-            setFormData({
-              ...formData,
-              lines: [...formData.lines, { productId: '', qty: 1, unitPrice: '', tax: 0 }],
-            });
-          }}>
-            + Add Line
-          </button>
-          <div className="button-group" style={{ marginTop: '20px' }}>
-            <button type="submit">Create</button>
-            <button type="button" className="secondary" onClick={() => setShowForm(false)}>
-              Cancel
+            ))}
+
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setFormData({ ...formData, lines: [...formData.lines, { productId: '', qty: 1, unitPrice: '', tax: 0 }] })}
+              style={{ marginBottom: 4 }}
+            >
+              + Add Line
             </button>
-          </div>
-        </form>
+
+            <div className="button-group">
+              <button type="submit">Create Sales Order</button>
+              <button type="button" className="secondary" onClick={() => setShowForm(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
       )}
 
-      {!showForm && <button onClick={() => setShowForm(true)} className="mb-20">+ Create Sales Order</button>}
-
+      {/* ── Detail view ─────────────────────────────────────────── */}
       {selectedOrderData && (
-        <div className="section">
-          <h3>Sales Order #{selectedOrderData.id}</h3>
-          <p>Customer: <strong>{selectedOrderData.customer.name}</strong></p>
+        <div className="page-card">
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div>
+              <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700 }}>
+                Sales Order #{selectedOrderData.id}
+              </h3>
+              <p style={{ margin: 0, color: '#888', fontSize: 13 }}>
+                Customer: <strong style={{ color: '#333' }}>{selectedOrderData.customer.name}</strong>
+              </p>
+            </div>
+            <span className={`status-badge ${selectedOrderData.status.toLowerCase()}`}>
+              {selectedOrderData.status}
+            </span>
+          </div>
+
           <table>
             <thead>
-              <tr><th>Product</th><th>Qty</th><th>Price</th><th>Tax</th><th>Total</th></tr>
+              <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Tax</th>
+                <th>Total</th>
+              </tr>
             </thead>
             <tbody>
               {selectedOrderData.lines.map((l) => {
                 const total = l.qty * parseFloat(l.unitPrice) * (1 + parseFloat(l.tax) / 100);
                 return (
                   <tr key={l.id}>
-                    <td>{l.product.name}</td>
+                    <td style={{ fontWeight: 500 }}>{l.product.name}</td>
                     <td>{l.qty}</td>
-                    <td>₹{parseFloat(l.unitPrice).toFixed(2)}</td>
+                    <td>₹{parseFloat(l.unitPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td>{l.tax}%</td>
-                    <td>₹{total.toFixed(2)}</td>
+                    <td style={{ fontWeight: 600 }}>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {selectedOrderData.status !== 'INVOICED' && !selectedOrderData.customerInvoice && (
-            <button onClick={() => handleGenerateInvoice(selectedOrderData.id)} style={{ marginTop: '15px' }}>
-              Generate Invoice
-            </button>
-          )}
-          {selectedOrderData.customerInvoice && (
-            <div className="success" style={{ marginTop: '15px' }}>✓ Invoice Generated</div>
-          )}
-          <button className="secondary" onClick={() => setSelectedOrder(null)} style={{ marginTop: '15px' }}>Close</button>
+
+          <div className="button-group">
+            {selectedOrderData.status !== 'INVOICED' && !selectedOrderData.customerInvoice && (
+              <button onClick={() => handleGenerateInvoice(selectedOrderData.id)}>
+                Generate Invoice
+              </button>
+            )}
+            {selectedOrderData.customerInvoice && (
+              <div className="success" style={{ marginBottom: 0, flex: 1 }}>
+                ✓ Invoice Generated
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {!selectedOrder && (
-        <table>
-          <thead>
-            <tr><th>SO #</th><th>Customer</th><th>Status</th><th>Items</th><th>Invoice</th><th>Actions</th></tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id}>
-                <td>#{o.id}</td>
-                <td>{o.customer.name}</td>
-                <td><span className={`status-badge ${o.status.toLowerCase()}`}>{o.status}</span></td>
-                <td>{o.lines.length}</td>
-                <td>{o.customerInvoice ? 'Yes' : 'No'}</td>
-                <td><button onClick={() => setSelectedOrder(o.id)}>View</button></td>
+      {/* ── List ────────────────────────────────────────────────── */}
+      {!selectedOrder && !showForm && (
+        <div className="page-card">
+          <table>
+            <thead>
+              <tr>
+                <th>SO #</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Items</th>
+                <th>Invoice</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#bbb', padding: '40px 0' }}>
+                    No sales orders yet
+                  </td>
+                </tr>
+              ) : orders.map((o) => (
+                <tr key={o.id}>
+                  <td style={{ fontWeight: 600, color: '#0F6A4B' }}>#{o.id}</td>
+                  <td style={{ fontWeight: 500 }}>{o.customer.name}</td>
+                  <td>
+                    <span className={`status-badge ${o.status.toLowerCase()}`}>{o.status}</span>
+                  </td>
+                  <td>
+                    <span className="status-badge draft">{o.lines.length} items</span>
+                  </td>
+                  <td>
+                    {o.customerInvoice
+                      ? <span className="status-badge invoiced">Invoiced</span>
+                      : <span className="status-badge draft">Not Invoiced</span>}
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => setSelectedOrder(o.id)}
+                      style={{ padding: '5px 14px', fontSize: '12px' }}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
