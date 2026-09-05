@@ -107,4 +107,12 @@ export const aiAPI = {
     api.post('/ai/chat', { message, conversation }),
 };
 
+export const ocrAPI = {
+  processFile: (formData) =>
+    api.post('/ocr/process', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  confirmInvoice: (data) => api.post('/ocr/confirm', data),
+};
+
 export default api;

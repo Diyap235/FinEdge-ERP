@@ -3,7 +3,7 @@ import { reportsAPI } from '../services/api';
 import {
   TrendingUp, TrendingDown, DollarSign,
   Landmark, Wallet, Users, ArrowDownCircle,
-  RefreshCw, Calendar,
+  RefreshCw, Calendar, ScanLine,
 } from 'lucide-react';
 
 /* ── KPI meta — pairs each field with an icon and colour ─────────── */
@@ -18,10 +18,14 @@ const KPI_META = [
 ];
 
 /* ── All logic preserved exactly ────────────────────────────────── */
-export default function Dashboard() {
+export default function Dashboard({ onNavigate, currentUser }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const rawRole = typeof currentUser === 'object' ? currentUser?.role : currentUser;
+  const role = String(rawRole || '').toLowerCase().trim();
+  const isAuthorizedRole = role === 'admin' || role === 'accountant';
 
   useEffect(() => { fetchDashboard(); }, []);
 
@@ -50,11 +54,86 @@ export default function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Financial overview · live data</p>
         </div>
-        <button className="action-btn" onClick={fetchDashboard}>
-          <RefreshCw size={14} />
-          Refresh
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isAuthorizedRole && (
+            <button
+              className="action-btn"
+              onClick={() => onNavigate?.('ocr-scanner')}
+              style={{
+                background: 'linear-gradient(135deg, #0F6A4B, #168a62)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(15,106,75,0.25)',
+              }}
+            >
+              <ScanLine size={14} />
+              AI Invoice Scanner
+            </button>
+          )}
+          <button className="action-btn" onClick={fetchDashboard}>
+            <RefreshCw size={14} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {/* ── Quick Action for Accountant/Admin ───────────────────── */}
+      {isAuthorizedRole && (
+        <div
+          className="page-card"
+          style={{
+            marginBottom: 20,
+            background: 'linear-gradient(135deg, #f0faf5, #e6f5ef)',
+            border: '1px solid #bbf0d8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16,
+            padding: '16px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: '#0F6A4B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                flexShrink: 0,
+              }}
+            >
+              <ScanLine size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: '#0F6A4B' }}>
+                AI Invoice Scanner
+              </h3>
+              <p style={{ margin: 0, fontSize: 12, color: '#4a5568', marginTop: 2 }}>
+                Scan PDF or image invoices to extract items, match vendors/products, and record ERP transactions.
+              </p>
+            </div>
+          </div>
+          <button
+            className="action-btn"
+            onClick={() => onNavigate?.('ocr-scanner')}
+            style={{
+              background: '#0F6A4B',
+              color: '#fff',
+              border: 'none',
+              padding: '8px 16px',
+              fontSize: 12.5,
+              fontWeight: 600,
+            }}
+          >
+            Open Scanner
+          </button>
+        </div>
+      )}
 
       {error && <div className="error">{error}</div>}
 

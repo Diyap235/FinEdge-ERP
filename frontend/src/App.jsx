@@ -16,6 +16,7 @@ import CustomerInvoicesPage from './pages/CustomerInvoicesPage';
 import PaymentsPage from './pages/PaymentsPage';
 import JournalEntriesPage from './pages/JournalEntriesPage';
 import ReportsPage from './pages/ReportsPage';
+import AiInvoiceScannerPage from './pages/AiInvoiceScannerPage';
 
 // ── Page IDs ─────────────────────────────────────────────────────────────────
 const PAGES = {
@@ -28,6 +29,7 @@ const PAGES = {
   VENDOR_BILLS:       'vendor-bills',
   SALES_ORDERS:       'sales-orders',
   CUSTOMER_INVOICES:  'customer-invoices',
+  OCR_SCANNER:        'ocr-scanner',
   PAYMENTS:           'payments',
   JOURNAL_ENTRIES:    'journal-entries',
   REPORTS:            'reports',
@@ -68,22 +70,23 @@ function App() {
     };
   }, [currentUser]);
 
-  // ── Page renderer — unchanged ─────────────────────────────────────────────
+  // ── Page renderer ─────────────────────────────────────────────────────────
   const renderPage = () => {
     switch (currentPage) {
-      case PAGES.DASHBOARD:          return <Dashboard />;
+      case PAGES.DASHBOARD:          return <Dashboard onNavigate={setCurrentPage} currentUser={currentUser} />;
       case PAGES.CONTACTS:           return <ContactsPage />;
       case PAGES.PRODUCTS:           return <ProductsPage />;
       case PAGES.ACCOUNTS:           return <AccountsPage />;
       case PAGES.JOURNALS:           return <JournalsPage />;
       case PAGES.PURCHASE_ORDERS:    return <PurchaseOrdersPage />;
-      case PAGES.VENDOR_BILLS:       return <VendorBillsPage />;
+      case PAGES.VENDOR_BILLS:       return <VendorBillsPage onNavigate={setCurrentPage} currentUser={currentUser} />;
       case PAGES.SALES_ORDERS:       return <SalesOrdersPage />;
-      case PAGES.CUSTOMER_INVOICES:  return <CustomerInvoicesPage />;
+      case PAGES.CUSTOMER_INVOICES:  return <CustomerInvoicesPage onNavigate={setCurrentPage} currentUser={currentUser} />;
+      case PAGES.OCR_SCANNER:        return <AiInvoiceScannerPage currentUser={currentUser} onNavigate={setCurrentPage} />;
       case PAGES.PAYMENTS:           return <PaymentsPage />;
       case PAGES.JOURNAL_ENTRIES:    return <JournalEntriesPage />;
       case PAGES.REPORTS:            return <ReportsPage />;
-      default:                       return <Dashboard />;
+      default:                       return <Dashboard onNavigate={setCurrentPage} currentUser={currentUser} />;
     }
   };
 
@@ -97,6 +100,7 @@ function App() {
         onNavigate={setCurrentPage}
         aiOpen={aiOpen}
         onAiToggle={() => setAiOpen(v => !v)}
+        currentUser={currentUser}
       />
 
       {/* Right column: topbar + scrollable content.

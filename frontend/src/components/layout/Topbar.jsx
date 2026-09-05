@@ -18,6 +18,7 @@ const PAGE_LABELS = {
   'payments':          'Payments',
   'journal-entries':   'Journal Entries',
   'reports':           'Reports',
+  'ocr-scanner':       'AI Invoice Scanner',
 };
 
 /* ── Role definitions ───────────────────────────────────────────── */
