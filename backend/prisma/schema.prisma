@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -30,16 +30,14 @@ model Contact {
 
   purchaseOrders  PurchaseOrder[]
   salesOrders     SalesOrder[]
-  vendorBills     VendorBill[]
-  customerInvoices CustomerInvoice[]
 }
 
 model Product {
   id           Int     @id @default(autoincrement())
   name         String
   type         String  // furniture type
-  salesPrice   Decimal @db.Numeric(12, 2)
-  cost         Decimal @db.Numeric(12, 2)
+  salesPrice   String  // Using String for Decimal in SQLite
+  cost         String  // Using String for Decimal in SQLite
   category     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -93,8 +91,8 @@ model JournalItem {
   entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   accountId Int
   account   Account @relation(fields: [accountId], references: [id])
-  debit     Decimal @db.Numeric(12, 2) @default(0)
-  credit    Decimal @db.Numeric(12, 2) @default(0)
+  debit     String  @default("0")  // Using String for Decimal
+  credit    String  @default("0")  // Using String for Decimal
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -123,7 +121,7 @@ model PurchaseOrderLine {
   productId       Int
   product         Product @relation(fields: [productId], references: [id])
   qty             Int
-  unitPrice       Decimal @db.Numeric(12, 2)
+  unitPrice       String  // Using String for Decimal
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -143,7 +141,7 @@ model VendorBill {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  payments Payment[]
+  payments Payment[] @relation("PaymentToVendorBill")
 
   @@index([purchaseOrderId])
   @@index([journalEntryId])
@@ -170,8 +168,8 @@ model SalesOrderLine {
   productId   Int
   product     Product @relation(fields: [productId], references: [id])
   qty         Int
-  unitPrice   Decimal @db.Numeric(12, 2)
-  tax         Decimal @db.Numeric(12, 2) @default(0)
+  unitPrice   String  // Using String for Decimal
+  tax         String  @default("0")  // Using String for Decimal
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -191,7 +189,7 @@ model CustomerInvoice {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  payments Payment[]
+  payments Payment[] @relation("PaymentToCustomerInvoice")
 
   @@index([salesOrderId])
   @@index([journalEntryId])
@@ -200,12 +198,12 @@ model CustomerInvoice {
 model Payment {
   id              Int     @id @default(autoincrement())
   type            String  // cash, bank
-  amount          Decimal @db.Numeric(12, 2)
+  amount          String  // Using String for Decimal
   date            DateTime @default(now())
   linkedBillId    Int?
-  linkedBill      VendorBill? @relation(fields: [linkedBillId], references: [id])
+  linkedBill      VendorBill? @relation("PaymentToVendorBill", fields: [linkedBillId], references: [id])
   linkedInvoiceId Int?
-  linkedInvoice   CustomerInvoice? @relation(fields: [linkedInvoiceId], references: [id])
+  linkedInvoice   CustomerInvoice? @relation("PaymentToCustomerInvoice", fields: [linkedInvoiceId], references: [id])
   journalEntryId  Int?
   journalEntry    JournalEntry? @relation(fields: [journalEntryId], references: [id])
   status          String  @default("RECORDED") // RECORDED
