@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { reportsAPI } from '../services/api';
+import { RefreshCw, TrendingUp, Scale, BookOpen } from 'lucide-react';
 
 export default function ReportsPage() {
   const [pl, setPL] = useState(null);
@@ -31,136 +32,226 @@ export default function ReportsPage() {
     }
   };
 
-  if (loading) return <div className="loading">Loading reports...</div>;
+  if (loading) return <div className="loading">Loading reports…</div>;
   if (error) return <div className="error">{error}</div>;
 
-  return (
-    <div>
-      <h2>Reports</h2>
+  const TABS = [
+    { id: 'pl',     label: 'Profit & Loss', icon: TrendingUp },
+    { id: 'bs',     label: 'Balance Sheet', icon: Scale      },
+    { id: 'ledger', label: 'Ledger',        icon: BookOpen   },
+  ];
 
-      <div style={{ marginBottom: '20px' }}>
-        <button
-          onClick={() => setActiveTab('pl')}
-          className={activeTab === 'pl' ? '' : 'secondary'}
-          style={{ marginRight: '10px' }}
-        >
-          Profit & Loss
-        </button>
-        <button
-          onClick={() => setActiveTab('bs')}
-          className={activeTab === 'bs' ? '' : 'secondary'}
-          style={{ marginRight: '10px' }}
-        >
-          Balance Sheet
-        </button>
-        <button
-          onClick={() => setActiveTab('ledger')}
-          className={activeTab === 'ledger' ? '' : 'secondary'}
-        >
-          Ledger
+  return (
+    <div className="page-root">
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Reports</h1>
+          <p className="page-subtitle">Financial statements · live data</p>
+        </div>
+        <button className="action-btn" onClick={loadReports}>
+          <RefreshCw size={14} />
+          Refresh
         </button>
       </div>
 
+      {/* ── Tab bar ─────────────────────────────────────────────── */}
+      <div className="page-card" style={{ padding: '12px 16px' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`tab-btn${activeTab === id ? ' active' : ''}`}
+            >
+              <Icon size={13} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Profit & Loss ───────────────────────────────────────── */}
       {activeTab === 'pl' && pl && (
-        <div className="section">
-          <h3>Profit & Loss Statement</h3>
+        <div className="page-card">
+          <h3 className="card-section-title">Profit & Loss Statement</h3>
+
+          {/* Summary KPI row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+            {[
+              { label: 'Total Revenue',  value: pl.totalIncome,  color: '#0F6A4B', bg: '#e6f5ef' },
+              { label: 'Total Expenses', value: pl.totalExpense, color: '#c0392b', bg: '#fef0ee' },
+              { label: 'Net Profit',     value: pl.netProfit,    color: '#1a56db', bg: '#e8f0fe' },
+            ].map(({ label, value, color, bg }) => (
+              <div key={label} className="card" style={{ marginBottom: 0 }}>
+                <div className="card-title">{label}</div>
+                <div className="card-value" style={{ color }}>
+                  ₹{parseFloat(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <table>
             <tbody>
               <tr>
-                <td><strong>Total Revenue</strong></td>
-                <td>₹{parseFloat(pl.totalIncome).toFixed(2)}</td>
+                <td style={{ fontWeight: 600 }}>Total Revenue</td>
+                <td style={{ fontWeight: 600, color: '#0F6A4B' }}>
+                  ₹{parseFloat(pl.totalIncome).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </td>
               </tr>
               <tr>
-                <td><strong>Total Expenses</strong></td>
-                <td>₹{parseFloat(pl.totalExpense).toFixed(2)}</td>
+                <td style={{ fontWeight: 600 }}>Total Expenses</td>
+                <td style={{ fontWeight: 600, color: '#c0392b' }}>
+                  ₹{parseFloat(pl.totalExpense).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </td>
               </tr>
-              <tr style={{ backgroundColor: '#d5f4e6' }}>
-                <td><strong>Net Profit</strong></td>
-                <td><strong>₹{parseFloat(pl.netProfit).toFixed(2)}</strong></td>
+              <tr style={{ background: '#e6f5ef' }}>
+                <td style={{ fontWeight: 700 }}>Net Profit</td>
+                <td style={{ fontWeight: 800, color: '#0F6A4B', fontSize: 15 }}>
+                  ₹{parseFloat(pl.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       )}
 
+      {/* ── Balance Sheet ───────────────────────────────────────── */}
       {activeTab === 'bs' && bs && (
-        <div className="section">
-          <h3>Balance Sheet</h3>
-          <div className="flex" style={{ gap: '40px' }}>
+        <div className="page-card">
+          <h3 className="card-section-title">Balance Sheet</h3>
+
+          <div className="flex" style={{ gap: 32, alignItems: 'flex-start' }}>
+
+            {/* Assets */}
             <div className="flex-1">
-              <h4>Assets</h4>
+              <h4 style={{ marginTop: 0 }}>Assets</h4>
               <table>
                 <tbody>
                   {bs.assets.items.map((item) => (
                     <tr key={item.name}>
                       <td>{item.name}</td>
-                      <td>₹{parseFloat(item.balance).toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                        ₹{parseFloat(item.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
                     </tr>
                   ))}
-                  <tr style={{ backgroundColor: '#ecf0f1' }}>
-                    <td><strong>Total Assets</strong></td>
-                    <td><strong>₹{parseFloat(bs.assets.total).toFixed(2)}</strong></td>
+                  <tr style={{ background: '#f5f2ec' }}>
+                    <td style={{ fontWeight: 700 }}>Total Assets</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#0F6A4B' }}>
+                      ₹{parseFloat(bs.assets.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
+            {/* Liabilities & Capital */}
             <div className="flex-1">
-              <h4>Liabilities & Capital</h4>
+              <h4 style={{ marginTop: 0 }}>Liabilities & Capital</h4>
               <table>
                 <tbody>
-                  <tr><td colSpan="2"><strong>Liabilities</strong></td></tr>
+                  <tr style={{ background: '#faf8f4' }}>
+                    <td colSpan={2} style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#888' }}>
+                      Liabilities
+                    </td>
+                  </tr>
                   {bs.liabilities.items.map((item) => (
                     <tr key={item.name}>
                       <td>{item.name}</td>
-                      <td>₹{parseFloat(item.balance).toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                        ₹{parseFloat(item.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
                     </tr>
                   ))}
-                  <tr><td colSpan="2"><strong>Capital</strong></td></tr>
+                  <tr style={{ background: '#faf8f4' }}>
+                    <td colSpan={2} style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#888' }}>
+                      Capital
+                    </td>
+                  </tr>
                   {bs.capital.items.map((item) => (
                     <tr key={item.name}>
                       <td>{item.name}</td>
-                      <td>₹{parseFloat(item.balance).toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                        ₹{parseFloat(item.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
                     </tr>
                   ))}
                   <tr>
                     <td>Net Profit</td>
-                    <td>₹{parseFloat(bs.netProfit).toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                      ₹{parseFloat(bs.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
                   </tr>
-                  <tr style={{ backgroundColor: '#ecf0f1' }}>
-                    <td><strong>Total Liabilities & Capital</strong></td>
-                    <td><strong>₹{parseFloat(bs.totalLiabilitiesAndCapital).toFixed(2)}</strong></td>
+                  <tr style={{ background: '#f5f2ec' }}>
+                    <td style={{ fontWeight: 700 }}>Total Liabilities & Capital</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#0F6A4B' }}>
+                      ₹{parseFloat(bs.totalLiabilitiesAndCapital).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div style={{ marginTop: '20px', padding: '15px', backgroundColor: bs.isBalanced ? '#d5f4e6' : '#fadbd8' }}>
-            {bs.isBalanced ? (
-              <p>✓ <strong>Balance Sheet is Balanced</strong></p>
-            ) : (
-              <p>✗ <strong>Balance Sheet is NOT Balanced</strong></p>
-            )}
+          {/* Balance indicator */}
+          <div
+            style={{
+              marginTop: 20,
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: bs.isBalanced ? '#e6f5ef' : '#fef0ee',
+              borderLeft: `4px solid ${bs.isBalanced ? '#0F6A4B' : '#ef4444'}`,
+              color: bs.isBalanced ? '#0F6A4B' : '#b91c1c',
+              fontWeight: 600,
+              fontSize: 13.5,
+            }}
+          >
+            {bs.isBalanced
+              ? '✓ Balance Sheet is Balanced'
+              : '✗ Balance Sheet is NOT Balanced'}
           </div>
         </div>
       )}
 
+      {/* ── General Ledger ──────────────────────────────────────── */}
       {activeTab === 'ledger' && ledger && (
-        <div className="section">
-          <h3>General Ledger</h3>
+        <div className="page-card">
+          <h3 className="card-section-title">General Ledger</h3>
           <table>
             <thead>
-              <tr><th>Date</th><th>Account</th><th>Reference</th><th>Debit</th><th>Credit</th></tr>
+              <tr>
+                <th>Date</th>
+                <th>Account</th>
+                <th>Reference</th>
+                <th>Debit</th>
+                <th>Credit</th>
+              </tr>
             </thead>
             <tbody>
-              {ledger.map((item, idx) => (
+              {ledger.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#bbb', padding: '40px 0' }}>
+                    No ledger entries
+                  </td>
+                </tr>
+              ) : ledger.map((item, idx) => (
                 <tr key={idx}>
-                  <td>{new Date(item.date).toLocaleDateString()}</td>
-                  <td>{item.account}</td>
-                  <td>{item.reference || '-'}</td>
-                  <td>{parseFloat(item.debit) > 0 ? '₹' + parseFloat(item.debit).toFixed(2) : '-'}</td>
-                  <td>{parseFloat(item.credit) > 0 ? '₹' + parseFloat(item.credit).toFixed(2) : '-'}</td>
+                  <td>{new Date(item.date).toLocaleDateString('en-IN')}</td>
+                  <td style={{ fontWeight: 500 }}>{item.account}</td>
+                  <td>{item.reference || <span style={{ color: '#bbb' }}>—</span>}</td>
+                  <td style={{ color: parseFloat(item.debit) > 0 ? '#0F6A4B' : '#bbb', fontWeight: parseFloat(item.debit) > 0 ? 600 : 400 }}>
+                    {parseFloat(item.debit) > 0
+                      ? '₹' + parseFloat(item.debit).toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                      : '—'}
+                  </td>
+                  <td style={{ color: parseFloat(item.credit) > 0 ? '#c0392b' : '#bbb', fontWeight: parseFloat(item.credit) > 0 ? 600 : 400 }}>
+                    {parseFloat(item.credit) > 0
+                      ? '₹' + parseFloat(item.credit).toLocaleString('en-IN', { minimumFractionDigits: 2 })
+                      : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
