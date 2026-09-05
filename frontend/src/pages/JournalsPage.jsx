@@ -19,29 +19,42 @@ export default function JournalsPage() {
     fetchJournals();
   }, []);
 
-  if (loading) return <div className="loading">Loading journals...</div>;
+  if (loading) return <div className="loading">Loading journals…</div>;
 
   return (
-    <div>
-      <h2>Journals</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Journal Name</th>
-            <th>Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          {journals.map((journal) => (
-            <tr key={journal.id}>
-              <td>{journal.name}</td>
-              <td>
-                <span className={`status-badge ${journal.type.toLowerCase()}`}>{journal.type}</span>
-              </td>
+    <div className="page-root">
+
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Journals</h1>
+          <p className="page-subtitle">{journals.length} journal{journals.length !== 1 ? 's' : ''} configured</p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="page-card">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Journal Name</th>
+              <th>Type</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {journals.length === 0 ? (
+              <tr><td colSpan={3} style={{ textAlign: 'center', color: '#bbb', padding: '40px 0' }}>No journals found</td></tr>
+            ) : journals.map((journal, i) => (
+              <tr key={journal.id}>
+                <td style={{ color: '#aaa', width: 40 }}>{i + 1}</td>
+                <td style={{ fontWeight: 500 }}>{journal.name}</td>
+                <td><span className={`status-badge ${journal.type.toLowerCase()}`}>{journal.type}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

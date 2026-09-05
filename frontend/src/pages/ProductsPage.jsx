@@ -1,22 +1,15 @@
 import { useState, useEffect } from 'react';
 import { productsAPI } from '../services/api';
+import { PackagePlus, Trash2 } from 'lucide-react';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'furniture',
-    salesPrice: '',
-    cost: '',
-    category: '',
-  });
+  const [formData, setFormData] = useState({ name: '', type: 'furniture', salesPrice: '', cost: '', category: '' });
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  useEffect(() => { fetchProducts(); }, []);
 
   const fetchProducts = async () => {
     try {
@@ -57,104 +50,106 @@ export default function ProductsPage() {
     }
   };
 
-  if (loading) return <div className="loading">Loading products...</div>;
+  if (loading) return <div className="loading">Loading products…</div>;
 
   return (
-    <div>
-      <h2>Products</h2>
+    <div className="page-root">
+
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Products</h1>
+          <p className="page-subtitle">{products.length} product{products.length !== 1 ? 's' : ''} in catalogue</p>
+        </div>
+        {!showForm && (
+          <button className="action-btn" onClick={() => setShowForm(true)}>
+            <PackagePlus size={14} />
+            New Product
+          </button>
+        )}
+      </div>
 
       {error && <div className="error">{error}</div>}
 
+      {/* Create form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="section">
-          <h3>Create Product</h3>
-          <div className="form-group">
-            <label>Name *</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Sales Price *</label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={formData.salesPrice}
-              onChange={(e) => setFormData({ ...formData, salesPrice: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Cost *</label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={formData.cost}
-              onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Category</label>
-            <input
-              type="text"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            />
-          </div>
-          <div className="button-group">
-            <button type="submit">Create</button>
-            <button type="button" className="secondary" onClick={() => setShowForm(false)}>
-              Cancel
-            </button>
-          </div>
-        </form>
+        <div className="page-card">
+          <h3 className="card-section-title">New Product</h3>
+          <form onSubmit={handleSubmit} style={{ background: 'none', padding: 0, boxShadow: 'none', border: 'none', marginBottom: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Name *</label>
+                <input type="text" required value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Category</label>
+                <input type="text" value={formData.category}
+                  onChange={e => setFormData({ ...formData, category: e.target.value })} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Sales Price *</label>
+                <input type="number" step="0.01" required value={formData.salesPrice}
+                  onChange={e => setFormData({ ...formData, salesPrice: e.target.value })} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Cost *</label>
+                <input type="number" step="0.01" required value={formData.cost}
+                  onChange={e => setFormData({ ...formData, cost: e.target.value })} />
+              </div>
+            </div>
+            <div className="button-group">
+              <button type="submit">Create Product</button>
+              <button type="button" className="secondary" onClick={() => setShowForm(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
       )}
 
-      {!showForm && (
-        <button onClick={() => setShowForm(true)} className="mb-20">
-          + Create Product
-        </button>
-      )}
-
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Sales Price</th>
-            <th>Cost</th>
-            <th>Profit</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product) => {
-            const profit = parseFloat(product.salesPrice) - parseFloat(product.cost);
-            return (
-              <tr key={product.id}>
-                <td>{product.name}</td>
-                <td>{product.category || '-'}</td>
-                <td>₹{parseFloat(product.salesPrice).toFixed(2)}</td>
-                <td>₹{parseFloat(product.cost).toFixed(2)}</td>
-                <td>₹{profit.toFixed(2)}</td>
-                <td>
-                  <button
-                    className="danger"
-                    onClick={() => handleDelete(product.id)}
-                    style={{ padding: '5px 10px', fontSize: '12px' }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {/* Table */}
+      <div className="page-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Sales Price</th>
+              <th>Cost</th>
+              <th>Margin</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.length === 0 ? (
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: '#bbb', padding: '40px 0' }}>No products yet</td></tr>
+            ) : products.map(product => {
+              const profit = parseFloat(product.salesPrice) - parseFloat(product.cost);
+              const margin = parseFloat(product.salesPrice) > 0
+                ? ((profit / parseFloat(product.salesPrice)) * 100).toFixed(1)
+                : '0.0';
+              return (
+                <tr key={product.id}>
+                  <td style={{ fontWeight: 500 }}>{product.name}</td>
+                  <td>{product.category || <span style={{ color: '#bbb' }}>—</span>}</td>
+                  <td>₹{parseFloat(product.salesPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td>₹{parseFloat(product.cost).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td>
+                    <span style={{ color: profit >= 0 ? '#0F6A4B' : '#c0392b', fontWeight: 600 }}>
+                      {margin}%
+                    </span>
+                  </td>
+                  <td>
+                    <button className="danger" onClick={() => handleDelete(product.id)}
+                      style={{ padding: '5px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
