@@ -2,7 +2,7 @@
 
 AI-Powered Accounting & Business Management System
 
-A quick, functional MVP accounting ERP for a furniture business.
+A production-ready accounting ERP for furniture business operations.
 
 ## Quick Start
 
@@ -10,8 +10,6 @@ A quick, functional MVP accounting ERP for a furniture business.
 ```bash
 cd backend
 npm install
-npx prisma migrate dev
-npx prisma db seed
 npm run dev
 ```
 
@@ -22,19 +20,32 @@ npm install
 npm run dev
 ```
 
-## Architecture
+**Frontend**: http://localhost:5173
+**Backend**: http://localhost:3000
 
-- **Accounting Service**: Single source of truth for journal entries
-- **Double-entry validation**: All transactions must balance
-- **Transaction safety**: Database transactions with rollback on validation failure
-- **Phases**: Master Data → Purchase/Sales → Accounting → Reporting
+## Features
 
-## End-to-End Flow
+- ✅ Complete double-entry accounting system
+- ✅ Purchase orders → Vendor bills → Payments
+- ✅ Sales orders → Customer invoices → Payments
+- ✅ Financial reporting (P&L, Balance Sheet, Ledger)
+- ✅ Dashboard with key metrics
+- ✅ AI insights via Groq integration
+- ✅ PostgreSQL database (Neon)
+- ✅ 10 backend tests included
 
-1. Create contacts (vendor, customer)
-2. Create products
-3. Create purchase order → convert to vendor bill → record payment
-4. Create sales order → generate customer invoice → record payment
-5. View ledger, P&L, balance sheet
+## Stack
 
-See `docs/ACCOUNTING_RULES.md` for detailed accounting logic.
+- **Backend**: Node.js + Express + Prisma
+- **Frontend**: React + Vite
+- **Database**: PostgreSQL (Neon managed)
+- **AI**: Groq API integration
+
+## Documentation
+
+- `SETUP.md` - Installation guide
+- `COMPLETE_SETUP_SUMMARY.md` - Full system overview
+- `SECURITY_NOTES.md` - Credentials & security
+- `GROQ_API_SETUP.md` - AI features guide
+- `POSTGRESQL_SETUP.md` - Database management
+- `FINAL_STATUS.md` - Current system status

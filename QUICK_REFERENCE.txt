@@ -1,0 +1,146 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║         AI CHATBOT - QUICK REFERENCE CARD                         ║
+║                   FinEdge-ERP Hackathon                           ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 📦 INSTALLATION                                                   │
+└───────────────────────────────────────────────────────────────────┘
+
+  cd backend
+  npm install
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🔐 SETUP API KEY                                                  │
+└───────────────────────────────────────────────────────────────────┘
+
+  1. Get key: https://console.groq.com/keys
+  2. Edit: backend/.env
+  3. Add: GROQ_API_KEY=gsk_your_key_here
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🚀 RUN SERVERS                                                    │
+└───────────────────────────────────────────────────────────────────┘
+
+  # Terminal 1 - Backend
+  cd backend
+  npm run dev
+
+  # Terminal 2 - Frontend  
+  cd frontend
+  npm run dev
+
+  Backend:  http://localhost:3000
+  Frontend: http://localhost:5173
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🧪 TEST COMMANDS                                                  │
+└───────────────────────────────────────────────────────────────────┘
+
+  # Health check
+  curl http://localhost:3000/health
+
+  # Test AI chat
+  curl -X POST http://localhost:3000/api/ai/chat ^
+    -H "Content-Type: application/json" ^
+    -d "{\"message\":\"Hello\"}"
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🔌 API ENDPOINT                                                   │
+└───────────────────────────────────────────────────────────────────┘
+
+  POST /api/ai/chat
+
+  Request:
+  {
+    "message": "Your question here",
+    "conversation": []
+  }
+
+  Response:
+  {
+    "success": true,
+    "reply": "AI response here"
+  }
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 📁 FILES CREATED                                                  │
+└───────────────────────────────────────────────────────────────────┘
+
+  backend/src/services/ai.service.js     ← Groq integration
+  backend/src/routes/ai.routes.js        ← API endpoint
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 📝 FILES MODIFIED                                                 │
+└───────────────────────────────────────────────────────────────────┘
+
+  backend/package.json                   ← Added groq-sdk
+  backend/.env                           ← Added GROQ_API_KEY
+  backend/.env.example                   ← Added GROQ_API_KEY
+  backend/src/app.js                     ← Registered AI route
+  frontend/src/services/api.js           ← Added aiAPI
+  frontend/src/components/layout/AiPanel.jsx  ← Real API calls
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🎯 DEMO FLOW                                                      │
+└───────────────────────────────────────────────────────────────────┘
+
+  1. Open http://localhost:5173
+  2. Click "AI Copilot" button (Sparkles icon)
+  3. Type: "What can you help me with?"
+  4. Show AI response
+  5. Ask follow-up: "Explain journal entries"
+  6. Show conversation context maintained
+
+┌───────────────────────────────────────────────────────────────────┐
+│ ❌ TROUBLESHOOTING                                                │
+└───────────────────────────────────────────────────────────────────┘
+
+  "GROQ_API_KEY not configured"
+    → Add key to backend/.env and restart
+
+  "Failed to connect"
+    → Check backend is running: curl http://localhost:3000/health
+
+  "framer-motion error"
+    → Run: cd frontend && npm install
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 📚 DOCUMENTATION                                                  │
+└───────────────────────────────────────────────────────────────────┘
+
+  AI_CHATBOT_IMPLEMENTATION.md   ← Full technical guide
+  TEST_CHATBOT.md                ← Quick testing guide
+  CHATBOT_SUMMARY.md             ← Implementation summary
+  QUICK_REFERENCE.txt            ← This file
+
+┌───────────────────────────────────────────────────────────────────┐
+│ ✅ REQUIREMENTS CHECKLIST                                         │
+└───────────────────────────────────────────────────────────────────┘
+
+  ✓ Backend POST /api/ai/chat endpoint
+  ✓ Groq LLM integration (llama-3.3-70b-versatile)
+  ✓ GROQ_API_KEY secured in backend
+  ✓ Frontend chatbot connected
+  ✓ Conversation history maintained
+  ✓ Error handling implemented
+  ✓ Security best practices
+  ✓ No database needed (state-based)
+  ✓ Complete documentation
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🔒 SECURITY                                                       │
+└───────────────────────────────────────────────────────────────────┘
+
+  ✓ API key never exposed to frontend
+  ✓ .env file in .gitignore
+  ✓ Input validation on backend
+  ✓ Proper error messages (no leaks)
+
+┌───────────────────────────────────────────────────────────────────┐
+│ 🎉 STATUS: READY FOR HACKATHON                                   │
+└───────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+Good luck with your hackathon! 🚀
