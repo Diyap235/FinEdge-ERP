@@ -1,16 +1,92 @@
-import { PrismaClient } from '@prisma/client';
-import Decimal from 'decimal.js';
+import { prisma } from '../lib/prisma.js';
+import { money, moneyStr } from '../lib/money.js';
 import { accountingService } from './accounting.service.js';
 
-const prisma = new PrismaClient();
+function isCustomerType(type) {
+  const t = (type || '').toLowerCase();
+  return t === 'customer' || t === 'both';
+}
+
+export function calculateSalesLineTotal(line) {
+  const subtotal = money(line.qty).times(money(line.unitPrice));
+  const taxPercent = money(line.tax || 0);
+  const taxAmount = subtotal.times(taxPercent).div(100);
+  return subtotal.plus(taxAmount);
+}
+
+export function calculateSalesTotals(lines) {
+  let subtotal = money(0);
+  let tax = money(0);
+  for (const line of lines) {
+    const lineSubtotal = money(line.qty).times(money(line.unitPrice));
+    const lineTax = lineSubtotal.times(money(line.tax || 0)).div(100);
+    subtotal = subtotal.plus(lineSubtotal);
+    tax = tax.plus(lineTax);
+  }
+  return {
+    subtotal,
+    tax,
+    total: subtotal.plus(tax),
+  };
+}
+
+async function requireAccount(tx, name) {
+  const account = await tx.account.findUnique({ where: { name } });
+  if (!account) {
+    throw new Error('Required account not found');
+  }
+  return account;
+}
+
+async function requireJournal(tx, name) {
+  const journal = await tx.journal.findUnique({ where: { name } });
+  if (!journal) {
+    throw new Error('Required journal not found');
+  }
+  return journal;
+}
+
+function serializeSalesOrder(so) {
+  if (!so) return so;
+  const totals = calculateSalesTotals(so.lines || []);
+  return {
+    ...so,
+    subtotal: moneyStr(totals.subtotal),
+    taxTotal: moneyStr(totals.tax),
+    total: moneyStr(totals.total),
+  };
+}
+
+function invoiceTotals(invoice) {
+  return calculateSalesTotals(invoice.salesOrder?.lines || []);
+}
+
+function paymentsSum(payments) {
+  return (payments || []).reduce(
+    (sum, p) => sum.plus(money(p.amount)),
+    money(0)
+  );
+}
+
+function serializeCustomerInvoice(invoice) {
+  if (!invoice) return invoice;
+  const totals = invoiceTotals(invoice);
+  const paid = paymentsSum(invoice.payments);
+  const outstanding = totals.total.minus(paid);
+  return {
+    ...invoice,
+    subtotal: moneyStr(totals.subtotal),
+    taxTotal: moneyStr(totals.tax),
+    total: moneyStr(totals.total),
+    amountPaid: moneyStr(paid),
+    outstanding: moneyStr(outstanding),
+  };
+}
 
 export const salesService = {
-  /**
-   * Create sales order
-   */
   async createSalesOrder(customerId, lines) {
     if (!customerId) {
-      throw new Error('Customer ID is required');
+      throw new Error('Customer not found');
     }
 
     if (!Array.isArray(lines) || lines.length === 0) {
@@ -25,14 +101,34 @@ export const salesService = {
       throw new Error('Customer not found');
     }
 
-    // Verify all products exist
+    if (!isCustomerType(customer.type)) {
+      throw new Error('Customer not found');
+    }
+
     for (const line of lines) {
+      if (!line.productId) {
+        throw new Error('Product not found');
+      }
+
+      const qty = Number(line.qty);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        throw new Error('Quantity must be greater than 0');
+      }
+
+      if (money(line.unitPrice).lessThan(0)) {
+        throw new Error('Unit price cannot be negative');
+      }
+
+      if (money(line.tax || 0).lessThan(0)) {
+        throw new Error('Tax cannot be negative');
+      }
+
       const product = await prisma.product.findUnique({
         where: { id: line.productId },
       });
 
       if (!product) {
-        throw new Error(`Product ${line.productId} not found`);
+        throw new Error('Product not found');
       }
     }
 
@@ -43,28 +139,21 @@ export const salesService = {
         lines: {
           create: lines.map((line) => ({
             productId: line.productId,
-            qty: line.qty,
-            unitPrice: new Decimal(line.unitPrice).toFixed(2),
-            tax: new Decimal(line.tax || 0).toFixed(2),
+            qty: Number(line.qty),
+            unitPrice: moneyStr(line.unitPrice),
+            tax: moneyStr(line.tax || 0),
           })),
         },
       },
       include: {
         customer: true,
-        lines: {
-          include: {
-            product: true,
-          },
-        },
+        lines: { include: { product: true } },
       },
     });
 
-    return so;
+    return serializeSalesOrder(so);
   },
 
-  /**
-   * Confirm sales order
-   */
   async confirmSalesOrder(soId) {
     const so = await prisma.salesOrder.findUnique({
       where: { id: soId },
@@ -78,388 +167,274 @@ export const salesService = {
       throw new Error(`Cannot confirm Sales Order with status ${so.status}`);
     }
 
-    return await prisma.salesOrder.update({
+    const updated = await prisma.salesOrder.update({
       where: { id: soId },
       data: { status: 'CONFIRMED' },
       include: {
         customer: true,
-        lines: {
-          include: {
-            product: true,
-          },
-        },
+        lines: { include: { product: true } },
+        customerInvoice: true,
       },
     });
+
+    return serializeSalesOrder(updated);
   },
 
   /**
-   * Generate customer invoice from sales order
-   * Creates accounting entry: DEBIT Debtors, CREDIT Sales Income
-   * For MVP: Keep tax visible but accounting is simple
+   * Tax handling (MVP): SalesOrderLine.tax is a percentage.
+   * Invoice total = subtotal + (subtotal * tax% / 100).
+   * That total is posted to Debtors / Sales Income.
+   * There is no dedicated Tax/GST account.
    */
   async generateCustomerInvoice(salesOrderId) {
-    const so = await prisma.salesOrder.findUnique({
-      where: { id: salesOrderId },
-      include: {
-        lines: {
+    return prisma.$transaction(
+      async (tx) => {
+        const so = await tx.salesOrder.findUnique({
+          where: { id: salesOrderId },
           include: {
-            product: true,
-          },
-        },
-        customer: true,
-      },
-    });
-
-    if (!so) {
-      throw new Error(`Sales Order ${salesOrderId} not found`);
-    }
-
-    if (so.status !== 'DRAFT' && so.status !== 'CONFIRMED') {
-      throw new Error(
-        `Cannot generate invoice for Sales Order with status ${so.status}`
-      );
-    }
-
-    if (so.lines.length === 0) {
-      throw new Error('Sales Order must have at least one line item');
-    }
-
-    // Calculate total invoice amount (subtotal + tax)
-    let subtotal = new Decimal(0);
-    let totalTax = new Decimal(0);
-
-    for (const line of so.lines) {
-      const lineTotal = new Decimal(line.qty).times(
-        new Decimal(line.unitPrice)
-      );
-      const lineTax = lineTotal.times(new Decimal(line.tax || 0).div(100));
-
-      subtotal = subtotal.plus(lineTotal);
-      totalTax = totalTax.plus(lineTax);
-    }
-
-    const invoiceTotal = subtotal.plus(totalTax);
-
-    // Get accounts
-    const debtorsAccount = await prisma.account.findUnique({
-      where: { name: 'Debtors' },
-    });
-
-    const salesIncomeAccount = await prisma.account.findUnique({
-      where: { name: 'Sales Income' },
-    });
-
-    if (!debtorsAccount) {
-      throw new Error('Debtors account not found');
-    }
-
-    if (!salesIncomeAccount) {
-      throw new Error('Sales Income account not found');
-    }
-
-    // Get Sales Journal
-    const journal = await prisma.journal.findUnique({
-      where: { name: 'Sales Journal' },
-    });
-
-    if (!journal) {
-      throw new Error('Sales Journal not found');
-    }
-
-    // Create Journal Entry
-    const journalEntry = await accountingService.createJournalEntry(
-      journal.id,
-      [
-        {
-          accountId: debtorsAccount.id,
-          debit: invoiceTotal.toFixed(2),
-          credit: 0,
-        },
-        {
-          accountId: salesIncomeAccount.id,
-          debit: 0,
-          credit: invoiceTotal.toFixed(2),
-        },
-      ],
-      `SO-${salesOrderId}`
-    );
-
-    // Create Customer Invoice
-    const invoice = await prisma.customerInvoice.create({
-      data: {
-        salesOrderId,
-        invoiceDate: new Date(),
-        journalEntryId: journalEntry.id,
-        status: 'UNPAID',
-      },
-      include: {
-        salesOrder: {
-          include: {
+            lines: { include: { product: true } },
             customer: true,
-            lines: {
-              include: {
-                product: true,
-              },
-            },
+            customerInvoice: true,
           },
-        },
-        journalEntry: {
+        });
+
+        if (!so) {
+          throw new Error('Sales Order not found');
+        }
+
+        if (so.customerInvoice) {
+          throw new Error('Sales order already invoiced');
+        }
+
+        if (so.status !== 'DRAFT' && so.status !== 'CONFIRMED') {
+          throw new Error('Sales order already invoiced');
+        }
+
+        if (so.lines.length === 0) {
+          throw new Error('Sales Order must have at least one line item');
+        }
+
+        const totals = calculateSalesTotals(so.lines);
+        const debtorsAccount = await requireAccount(tx, 'Debtors');
+        const salesIncomeAccount = await requireAccount(tx, 'Sales Income');
+        const journal = await requireJournal(tx, 'Sales Journal');
+
+        const journalEntry = await accountingService.createJournalEntry(
+          journal.id,
+          new Date(),
+          `SO-${salesOrderId}`,
+          [
+            {
+              accountId: debtorsAccount.id,
+              debit: moneyStr(totals.total),
+              credit: 0,
+            },
+            {
+              accountId: salesIncomeAccount.id,
+              debit: 0,
+              credit: moneyStr(totals.total),
+            },
+          ],
+          tx
+        );
+
+        const invoice = await tx.customerInvoice.create({
+          data: {
+            salesOrderId,
+            invoiceDate: new Date(),
+            journalEntryId: journalEntry.id,
+            status: 'POSTED',
+          },
           include: {
-            items: {
+            salesOrder: {
               include: {
-                account: true,
+                customer: true,
+                lines: { include: { product: true } },
               },
             },
+            journalEntry: {
+              include: {
+                journal: true,
+                items: { include: { account: true } },
+              },
+            },
+            payments: true,
           },
-        },
+        });
+
+        await tx.salesOrder.update({
+          where: { id: salesOrderId },
+          data: { status: 'INVOICED' },
+        });
+
+        return serializeCustomerInvoice(invoice);
       },
-    });
-
-    // Update Sales Order status
-    await prisma.salesOrder.update({
-      where: { id: salesOrderId },
-      data: { status: 'INVOICED' },
-    });
-
-    return invoice;
+      { timeout: 20000 }
+    );
   },
 
-  /**
-   * Record payment for customer invoice
-   * Creates accounting entry: DEBIT Cash/Bank, CREDIT Debtors
-   */
   async recordCustomerPayment(invoiceId, amount, paymentType) {
-    if (!['cash', 'bank'].includes(paymentType)) {
+    const type = (paymentType || '').toLowerCase();
+    if (!['cash', 'bank'].includes(type)) {
       throw new Error('Payment type must be cash or bank');
     }
 
-    const invoice = await prisma.customerInvoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        salesOrder: true,
-        journalEntry: {
+    return prisma.$transaction(
+      async (tx) => {
+        const invoice = await tx.customerInvoice.findUnique({
+          where: { id: invoiceId },
           include: {
-            items: true,
+            salesOrder: { include: { lines: true } },
+            payments: true,
           },
-        },
+        });
+
+        if (!invoice) {
+          throw new Error('Customer Invoice not found');
+        }
+
+        if (invoice.status === 'PAID') {
+          throw new Error('Invoice is already paid');
+        }
+
+        const totals = invoiceTotals(invoice);
+        const alreadyPaid = paymentsSum(invoice.payments);
+        const outstanding = totals.total.minus(alreadyPaid);
+        const paymentAmount = money(amount);
+
+        if (paymentAmount.lessThanOrEqualTo(0)) {
+          throw new Error('Payment amount must be greater than 0');
+        }
+
+        if (paymentAmount.greaterThan(outstanding)) {
+          throw new Error('Payment amount exceeds outstanding amount');
+        }
+
+        const debtorsAccount = await requireAccount(tx, 'Debtors');
+        const paymentAccountName = type === 'cash' ? 'Cash' : 'Bank';
+        const paymentAccount = await requireAccount(tx, paymentAccountName);
+        const journalName = type === 'cash' ? 'Cash Journal' : 'Bank Journal';
+        const journal = await requireJournal(tx, journalName);
+
+        const journalEntry = await accountingService.createJournalEntry(
+          journal.id,
+          new Date(),
+          `CUSTOMER-PAYMENT-${invoiceId}`,
+          [
+            {
+              accountId: paymentAccount.id,
+              debit: moneyStr(paymentAmount),
+              credit: 0,
+            },
+            {
+              accountId: debtorsAccount.id,
+              debit: 0,
+              credit: moneyStr(paymentAmount),
+            },
+          ],
+          tx
+        );
+
+        const payment = await tx.payment.create({
+          data: {
+            type,
+            amount: moneyStr(paymentAmount),
+            linkedInvoiceId: invoiceId,
+            journalEntryId: journalEntry.id,
+            status: 'RECORDED',
+          },
+        });
+
+        const newPaid = alreadyPaid.plus(paymentAmount);
+        const fullyPaid =
+          newPaid.equals(totals.total) ||
+          newPaid.greaterThanOrEqualTo(totals.total);
+
+        if (fullyPaid) {
+          await tx.customerInvoice.update({
+            where: { id: invoiceId },
+            data: { status: 'PAID' },
+          });
+        }
+
+        return {
+          payment,
+          journalEntry,
+          invoiceStatus: fullyPaid ? 'PAID' : 'POSTED',
+        };
       },
-    });
-
-    if (!invoice) {
-      throw new Error(`Customer Invoice ${invoiceId} not found`);
-    }
-
-    if (invoice.status === 'PAID') {
-      throw new Error('Invoice is already paid');
-    }
-
-    // Calculate invoice total
-    let invoiceTotal = new Decimal(0);
-    for (const item of invoice.journalEntry.items) {
-      if (item.debit > 0) {
-        invoiceTotal = invoiceTotal.plus(new Decimal(item.debit));
-      }
-    }
-
-    const paymentAmount = new Decimal(amount);
-
-    if (paymentAmount <= 0) {
-      throw new Error('Payment amount must be greater than 0');
-    }
-
-    if (paymentAmount > invoiceTotal) {
-      throw new Error(
-        `Payment amount (${paymentAmount}) exceeds invoice total (${invoiceTotal})`
-      );
-    }
-
-    // Get accounts
-    const debtorsAccount = await prisma.account.findUnique({
-      where: { name: 'Debtors' },
-    });
-
-    let paymentAccount;
-    if (paymentType === 'cash') {
-      paymentAccount = await prisma.account.findUnique({
-        where: { name: 'Cash' },
-      });
-    } else {
-      paymentAccount = await prisma.account.findUnique({
-        where: { name: 'Bank' },
-      });
-    }
-
-    if (!debtorsAccount || !paymentAccount) {
-      throw new Error('Required accounts not found');
-    }
-
-    // Get appropriate journal
-    const journal = await prisma.journal.findUnique({
-      where: {
-        name: paymentType === 'cash' ? 'Cash Journal' : 'Bank Journal',
-      },
-    });
-
-    if (!journal) {
-      throw new Error(
-        `${paymentType === 'cash' ? 'Cash' : 'Bank'} Journal not found`
-      );
-    }
-
-    // Create payment journal entry
-    const journalEntry = await accountingService.createJournalEntry(
-      journal.id,
-      [
-        {
-          accountId: paymentAccount.id,
-          debit: paymentAmount.toFixed(2),
-          credit: 0,
-        },
-        {
-          accountId: debtorsAccount.id,
-          debit: 0,
-          credit: paymentAmount.toFixed(2),
-        },
-      ],
-      `PAYMENT-${invoiceId}`
+      { timeout: 20000 }
     );
-
-    // Create Payment record
-    const payment = await prisma.payment.create({
-      data: {
-        type: paymentType,
-        amount: paymentAmount.toFixed(2),
-        linkedInvoiceId: invoiceId,
-        journalEntryId: journalEntry.id,
-        status: 'RECORDED',
-      },
-    });
-
-    // Check if invoice is fully paid
-    const totalPaid = await prisma.payment.aggregate({
-      where: { linkedInvoiceId: invoiceId },
-      _sum: { amount: true },
-    });
-
-    if (new Decimal(totalPaid._sum.amount || 0).equals(invoiceTotal)) {
-      await prisma.customerInvoice.update({
-        where: { id: invoiceId },
-        data: { status: 'PAID' },
-      });
-    }
-
-    return {
-      payment,
-      journalEntry,
-      invoiceStatus: new Decimal(totalPaid._sum.amount || 0).equals(
-        invoiceTotal
-      )
-        ? 'PAID'
-        : 'UNPAID',
-    };
   },
 
-  /**
-   * Get all sales orders
-   */
   async getAllSalesOrders() {
-    return await prisma.salesOrder.findMany({
+    const orders = await prisma.salesOrder.findMany({
       include: {
         customer: true,
-        lines: {
-          include: {
-            product: true,
-          },
-        },
+        lines: { include: { product: true } },
         customerInvoice: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
+    return orders.map(serializeSalesOrder);
   },
 
-  /**
-   * Get sales order by ID
-   */
   async getSalesOrderById(soId) {
-    return await prisma.salesOrder.findUnique({
+    const so = await prisma.salesOrder.findUnique({
       where: { id: soId },
       include: {
         customer: true,
-        lines: {
-          include: {
-            product: true,
-          },
-        },
+        lines: { include: { product: true } },
         customerInvoice: true,
       },
     });
+    return serializeSalesOrder(so);
   },
 
-  /**
-   * Get all customer invoices
-   */
   async getAllCustomerInvoices() {
-    return await prisma.customerInvoice.findMany({
+    const invoices = await prisma.customerInvoice.findMany({
       include: {
         salesOrder: {
           include: {
             customer: true,
-            lines: {
-              include: {
-                product: true,
-              },
-            },
+            lines: { include: { product: true } },
           },
         },
         journalEntry: {
           include: {
-            items: {
-              include: {
-                account: true,
-              },
-            },
+            journal: true,
+            items: { include: { account: true } },
           },
         },
         payments: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
+    return invoices.map(serializeCustomerInvoice);
   },
 
-  /**
-   * Get customer invoice by ID
-   */
   async getCustomerInvoiceById(invoiceId) {
-    return await prisma.customerInvoice.findUnique({
+    const invoice = await prisma.customerInvoice.findUnique({
       where: { id: invoiceId },
       include: {
         salesOrder: {
           include: {
             customer: true,
-            lines: {
-              include: {
-                product: true,
-              },
-            },
+            lines: { include: { product: true } },
           },
         },
         journalEntry: {
           include: {
-            items: {
-              include: {
-                account: true,
-              },
-            },
+            journal: true,
+            items: { include: { account: true } },
           },
         },
         payments: true,
       },
     });
+    return serializeCustomerInvoice(invoice);
   },
 };
 
 export default salesService;
+

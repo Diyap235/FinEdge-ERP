@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Search, Bell, ChevronDown, X, CalendarDays,
   ShieldCheck, Calculator, UserCircle, Check,
+  Sun, Moon,
 } from 'lucide-react';
 
 /* ── Page label map ─────────────────────────────────────────────── */
@@ -286,7 +287,7 @@ function RoleDropdown({ currentUser, onUserChange }) {
 /* ══════════════════════════════════════════════════════════════════
    Topbar — unchanged except user profile replaced with RoleDropdown
 ══════════════════════════════════════════════════════════════════ */
-export default function Topbar({ currentPage, currentUser, onUserChange }) {
+export default function Topbar({ currentPage, currentUser, onUserChange, isNight = false, onBgToggle }) {
   const [query, setQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -367,6 +368,38 @@ export default function Topbar({ currentPage, currentUser, onUserChange }) {
           {formatDate()}
         </span>
       </div>
+
+      {/* ── Day / Night background toggle ─────────────────────── */}
+      <button
+        onClick={onBgToggle}
+        aria-label={isNight ? 'Switch to day background' : 'Switch to night background'}
+        title={isNight ? 'Switch to day' : 'Switch to night'}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 11,
+          border: `1.5px solid ${isNight ? '#c5b8f0' : '#e5d8a0'}`,
+          background: isNight
+            ? 'linear-gradient(135deg,#2d1f6e 0%,#1a1040 100%)'
+            : 'linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          flexShrink: 0,
+          boxShadow: isNight
+            ? '0 2px 8px rgba(99,60,220,0.30)'
+            : '0 2px 8px rgba(245,158,11,0.25)',
+          transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.15s ease',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.10)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+      >
+        {isNight
+          ? <Moon size={15} style={{ color: '#c5b8f0' }} />
+          : <Sun  size={15} style={{ color: '#d97706' }} />
+        }
+      </button>
 
       {/* ── Notifications ─────────────────────────────────────── */}
       <button

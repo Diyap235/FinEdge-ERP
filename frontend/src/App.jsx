@@ -17,6 +17,8 @@ import PaymentsPage from './pages/PaymentsPage';
 import JournalEntriesPage from './pages/JournalEntriesPage';
 import ReportsPage from './pages/ReportsPage';
 import AiInvoiceScannerPage from './pages/AiInvoiceScannerPage';
+import dayBg from './assets/backgrounds/finedge-day.webp';
+import nightBg from './assets/backgrounds/finedge-night.webp';
 
 // ── Page IDs ─────────────────────────────────────────────────────────────────
 const PAGES = {
@@ -40,6 +42,17 @@ function App() {
   const [currentUser, setCurrentUser] = useState('admin');
   const [aiOpen, setAiOpen] = useState(false);
   const [sessionUser, setSessionUser] = useState(null);
+  const [isNight, setIsNight] = useState(
+    () => localStorage.getItem('finedge-bg') === 'night'
+  );
+
+  const toggleBg = () => {
+    setIsNight(prev => {
+      const next = !prev;
+      localStorage.setItem('finedge-bg', next ? 'night' : 'day');
+      return next;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -90,11 +103,24 @@ function App() {
     }
   };
 
-  return (
-    // Full-screen flex: sidebar + right column
-    <div className="flex min-h-screen" style={{ background: '#F6F3EC' }}>
+  // Background image is global — applies on every page.
+  // isNight toggles between day and night environment.
+  const activeBg = isNight ? nightBg : dayBg;
 
-      {/* Fixed left sidebar */}
+  return (
+    <div
+      className="flex min-h-screen"
+      style={{
+        backgroundImage:      `url(${activeBg})`,
+        backgroundColor:      '#F6F3EC',
+        backgroundSize:       'cover',
+        backgroundPosition:   'center',
+        backgroundRepeat:     'no-repeat',
+        backgroundAttachment: 'fixed',
+        transition:           'background-image 0.3s ease',
+      }}
+    >
+      {/* Fixed left sidebar — floats above the background */}
       <Sidebar
         currentPage={currentPage}
         onNavigate={setCurrentPage}
@@ -103,9 +129,7 @@ function App() {
         currentUser={currentUser}
       />
 
-      {/* Right column: topbar + scrollable content.
-          When AI panel is open, shrink right margin by 420px so content
-          doesn't slide under the panel. Transition matches panel spring. */}
+      {/* Right column: topbar + scrollable content */}
       <div
         className="flex flex-col flex-1 md:ml-[252px]"
         style={{
@@ -113,16 +137,17 @@ function App() {
           transition: 'margin-right 0.3s ease',
         }}
       >
-        {/* Fixed topbar */}
+        {/* Fixed topbar — floats above the background */}
         <Topbar
           currentPage={currentPage}
           currentUser={currentUser}
           onUserChange={setCurrentUser}
+          isNight={isNight}
+          onBgToggle={toggleBg}
         />
 
         {/* Scrollable page area — offset for topbar height */}
         <main className="flex-1 overflow-y-auto pt-14">
-          {/* Inner wrapper preserves the legacy .container width/padding */}
           <div className="container" style={{ padding: '20px' }}>
             {renderPage()}
           </div>

@@ -15,6 +15,7 @@ import customerInvoiceRoutes from './routes/customerInvoice.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import journalEntryRoutes from './routes/journalEntry.routes.js';
 import reportRoutes from './routes/report.routes.js';
+
 import aiRoutes from './routes/ai.routes.js';
 import ocrRoutes from './routes/ocr.routes.js';
 
