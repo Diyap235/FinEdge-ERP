@@ -39,7 +39,7 @@ app.use('/api/customer-invoices', customerInvoiceRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/journal-entries', journalEntryRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

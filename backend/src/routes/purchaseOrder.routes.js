@@ -16,7 +16,8 @@ router.get('/', async (req, res) => {
 // Create purchase order
 router.post('/', async (req, res) => {
   try {
-    const { vendorId, lines } = req.body;
+    const { vendorId } = req.body;
+    const lines = req.body.lines || req.body.items;
 
     if (!vendorId || !lines) {
       return res

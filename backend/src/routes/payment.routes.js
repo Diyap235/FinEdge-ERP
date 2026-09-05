@@ -1,18 +1,43 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-// Get all payments
+const paymentInclude = {
+  linkedBill: {
+    include: {
+      purchaseOrder: {
+        include: {
+          vendor: true,
+        },
+      },
+    },
+  },
+  linkedInvoice: {
+    include: {
+      salesOrder: {
+        include: {
+          customer: true,
+        },
+      },
+    },
+  },
+  journalEntry: {
+    include: {
+      journal: true,
+      items: {
+        include: {
+          account: true,
+        },
+      },
+    },
+  },
+};
+
 router.get('/', async (req, res) => {
   try {
     const payments = await prisma.payment.findMany({
-      include: {
-        linkedBill: true,
-        linkedInvoice: true,
-        journalEntry: true,
-      },
+      include: paymentInclude,
       orderBy: {
         createdAt: 'desc',
       },
@@ -23,24 +48,11 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get payment by ID
 router.get('/:id', async (req, res) => {
   try {
     const payment = await prisma.payment.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: {
-        linkedBill: true,
-        linkedInvoice: true,
-        journalEntry: {
-          include: {
-            items: {
-              include: {
-                account: true,
-              },
-            },
-          },
-        },
-      },
+      include: paymentInclude,
     });
 
     if (!payment) {

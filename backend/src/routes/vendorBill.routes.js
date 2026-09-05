@@ -31,7 +31,8 @@ router.get('/:id', async (req, res) => {
 // Record payment
 router.post('/:id/pay', async (req, res) => {
   try {
-    const { amount, paymentType } = req.body;
+    const amount = req.body.amount;
+    const paymentType = req.body.type || req.body.paymentType;
 
     if (!amount || !paymentType) {
       return res

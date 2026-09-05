@@ -16,7 +16,8 @@ router.get('/', async (req, res) => {
 // Create sales order
 router.post('/', async (req, res) => {
   try {
-    const { customerId, lines } = req.body;
+    const { customerId } = req.body;
+    const lines = req.body.lines || req.body.items;
 
     if (!customerId || !lines) {
       return res
