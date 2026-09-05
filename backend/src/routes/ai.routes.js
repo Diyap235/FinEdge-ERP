@@ -1,26 +1,19 @@
 import express from 'express';
 import { aiService } from '../services/ai.service.js';
+import { requireAuth } from '../middleware/auth.js';
+import { PermissionError } from '../ai/erpTools.js';
+import { PERMISSION_DENIED } from '../ai/permissions.js';
 
 const router = express.Router();
 
 /**
  * POST /api/ai/chat
- * Chat with AI assistant
- * 
- * Request body:
- * {
- *   "message": "User's question",
- *   "conversation": [
- *     { "role": "user", "content": "Previous message" },
- *     { "role": "assistant", "content": "Previous response" }
- *   ]
- * }
+ * Protected by existing User identity (X-User-Id → User.id, role from DB).
  */
-router.post('/chat', async (req, res) => {
+router.post('/chat', requireAuth, async (req, res) => {
   try {
     const { message, conversation } = req.body;
 
-    // Validate request
     if (!message || typeof message !== 'string') {
       return res.status(400).json({
         success: false,
@@ -35,7 +28,6 @@ router.post('/chat', async (req, res) => {
       });
     }
 
-    // Validate conversation format if provided
     if (conversation && !Array.isArray(conversation)) {
       return res.status(400).json({
         success: false,
@@ -43,34 +35,49 @@ router.post('/chat', async (req, res) => {
       });
     }
 
-    // Get AI response
-    const reply = await aiService.chat(message, conversation || []);
+    const result = await aiService.chat(message, conversation || [], req.user);
 
-    res.json({
+    if (typeof result === 'object' && result !== null) {
+      return res.json({
+        success: true,
+        reply: result.reply || '',
+        details: Array.isArray(result.details) ? result.details : [],
+        table: result.table || null,
+      });
+    }
+
+    return res.json({
       success: true,
-      reply,
+      reply: String(result || ''),
+      details: [],
+      table: null,
     });
   } catch (error) {
-    console.error('AI chat error:', error.message);
+    if (error instanceof PermissionError) {
+      return res.status(403).json({
+        success: false,
+        error: error.message || PERMISSION_DENIED,
+      });
+    }
 
-    // Check for specific error types
-    if (error.message.includes('GROQ_API_KEY')) {
+    if (error.message?.includes('GROQ_API_KEY')) {
       return res.status(500).json({
         success: false,
         error: 'AI service is not properly configured. Please contact support.',
       });
     }
 
-    if (error.message.includes('Rate limit')) {
+    if (error.message?.includes('Rate limit') || error.status === 429) {
       return res.status(429).json({
         success: false,
-        error: error.message,
+        error: 'Rate limit exceeded. Please try again in a moment.',
       });
     }
 
-    res.status(500).json({
+    console.error('[AI-ERROR]', error);
+    return res.status(500).json({
       success: false,
-      error: error.message || 'Failed to process your request. Please try again.',
+      error: 'Failed to process your request. Please try again.',
     });
   }
 });

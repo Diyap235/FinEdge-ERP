@@ -1,6 +1,6 @@
+import './loadEnv.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
 // Import routes
 import userRoutes from './routes/user.routes.js';
@@ -17,8 +17,7 @@ import journalEntryRoutes from './routes/journalEntry.routes.js';
 import reportRoutes from './routes/report.routes.js';
 
 import aiRoutes from './routes/ai.routes.js';
-
-dotenv.config();
+import ocrRoutes from './routes/ocr.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +40,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/journal-entries', journalEntryRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ocr', ocrRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

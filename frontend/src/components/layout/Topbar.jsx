@@ -19,6 +19,7 @@ const PAGE_LABELS = {
   'payments':          'Payments',
   'journal-entries':   'Journal Entries',
   'reports':           'Reports',
+  'ocr-scanner':       'AI Invoice Scanner',
 };
 
 /* ── Role definitions ───────────────────────────────────────────── */
@@ -43,9 +44,9 @@ const ROLES = [
   },
   {
     id:       'contact',
-    label:    'Contact',
-    subtitle: 'Contact',
-    initials: 'C',
+    label:    'User',
+    subtitle: 'Customer / User',
+    initials: 'U',
     icon:     UserCircle,
     color:    '#7c3aed',
     bg:       '#f3e8ff',
@@ -266,7 +267,7 @@ function RoleDropdown({ currentUser, onUserChange }) {
             <p style={{
               margin: 0, fontSize: 10, color: '#ccc', textAlign: 'center',
             }}>
-              UI only · no authentication
+              Role is loaded from the User table for AI requests
             </p>
           </div>
         </div>
