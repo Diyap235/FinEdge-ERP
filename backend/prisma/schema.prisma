@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -36,8 +36,8 @@ model Product {
   id           Int     @id @default(autoincrement())
   name         String
   type         String  // furniture type
-  salesPrice   String  // Using String for Decimal in SQLite
-  cost         String  // Using String for Decimal in SQLite
+  salesPrice   Decimal @db.Decimal(12, 2)
+  cost         Decimal @db.Decimal(12, 2)
   category     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -91,8 +91,8 @@ model JournalItem {
   entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   accountId Int
   account   Account @relation(fields: [accountId], references: [id])
-  debit     String  @default("0")  // Using String for Decimal
-  credit    String  @default("0")  // Using String for Decimal
+  debit     Decimal @db.Decimal(12, 2)
+  credit    Decimal @db.Decimal(12, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -121,7 +121,7 @@ model PurchaseOrderLine {
   productId       Int
   product         Product @relation(fields: [productId], references: [id])
   qty             Int
-  unitPrice       String  // Using String for Decimal
+  unitPrice       Decimal @db.Decimal(12, 2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -168,8 +168,8 @@ model SalesOrderLine {
   productId   Int
   product     Product @relation(fields: [productId], references: [id])
   qty         Int
-  unitPrice   String  // Using String for Decimal
-  tax         String  @default("0")  // Using String for Decimal
+  unitPrice   Decimal @db.Decimal(12, 2)
+  tax         Decimal @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -198,7 +198,7 @@ model CustomerInvoice {
 model Payment {
   id              Int     @id @default(autoincrement())
   type            String  // cash, bank
-  amount          String  // Using String for Decimal
+  amount          Decimal @db.Decimal(12, 2)
   date            DateTime @default(now())
   linkedBillId    Int?
   linkedBill      VendorBill? @relation("PaymentToVendorBill", fields: [linkedBillId], references: [id])
