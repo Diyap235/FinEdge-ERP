@@ -85,4 +85,9 @@ export const reportsAPI = {
   getAccountBalances: () => api.get('/reports/account-balances'),
 };
 
+export const aiAPI = {
+  chat: (message, conversation = []) => 
+    api.post('/ai/chat', { message, conversation }),
+};
+
 export default api;

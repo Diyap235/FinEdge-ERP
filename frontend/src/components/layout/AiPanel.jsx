@@ -7,7 +7,9 @@ import {
   Bot,
   ChevronRight,
   MessageSquare,
+  AlertCircle,
 } from 'lucide-react';
+import { aiAPI } from '../../services/api';
 
 /* ── Suggestion prompts ─────────────────────────────────────────── */
 const SUGGESTIONS = [
@@ -70,6 +72,7 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [typing, setTyping] = useState(false);
+  const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
 
   /* Auto-scroll to bottom whenever messages change */
@@ -77,25 +80,53 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typing]);
 
-  /* Simulate a dummy response — UI only, no API */
-  const handleSend = (text) => {
+  /* Send message to AI API */
+  const handleSend = async (text) => {
     const query = (text ?? input).trim();
     if (!query) return;
 
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: query }]);
+    setError(null);
+    
+    // Add user message to UI
+    const userMessage = { role: 'user', text: query };
+    setMessages(prev => [...prev, userMessage]);
     setTyping(true);
 
-    setTimeout(() => {
+    try {
+      // Build conversation history for API
+      const conversation = messages.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.text,
+      }));
+
+      // Call AI API
+      const response = await aiAPI.chat(query, conversation);
+      
       setTyping(false);
+      
+      if (response.data.success) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', text: response.data.reply },
+        ]);
+      } else {
+        throw new Error(response.data.error || 'Failed to get response');
+      }
+    } catch (err) {
+      setTyping(false);
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to connect to AI service';
+      setError(errorMessage);
+      
+      // Add error message to chat
       setMessages(prev => [
         ...prev,
-        {
-          role: 'assistant',
-          text: 'This is a UI-only demo. AI integration will be connected in Phase 2.',
+        { 
+          role: 'assistant', 
+          text: `Sorry, I encountered an error: ${errorMessage}. Please try again.` 
         },
       ]);
-    }, 1200);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -300,6 +331,27 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
         {/* ── Message thread ──────────────────────────────────────── */}
         {hasMessages && (
           <div style={{ paddingBottom: 8 }}>
+            {/* Error banner */}
+            {error && (
+              <div
+                style={{
+                  background: '#fef0ee',
+                  border: '1px solid #f5c6c0',
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <AlertCircle size={16} style={{ color: '#c0392b', flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: 12, color: '#c0392b', lineHeight: 1.4 }}>
+                  {error}
+                </p>
+              </div>
+            )}
+
             {messages.map((msg, i) => (
               <MessageBubble key={i} role={msg.role} text={msg.text} />
             ))}
@@ -430,7 +482,7 @@ export default function AiPanel({ onClose, userName = 'Arjun' }) {
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 10, color: '#ccc', margin: '8px 0 0' }}>
-          UI demo only · AI integration coming in Phase 2
+          Powered by Groq AI · FinEdge ERP Assistant
         </p>
       </div>
 
