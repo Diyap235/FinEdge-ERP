@@ -1,0 +1,218 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  name  String
+  email String  @unique
+  role  String  // admin, accountant, contact
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id        Int     @id @default(autoincrement())
+  name      String
+  type      String  // customer, vendor, both
+  email     String?
+  mobile    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseOrders  PurchaseOrder[]
+  salesOrders     SalesOrder[]
+  vendorBills     VendorBill[]
+  customerInvoices CustomerInvoice[]
+}
+
+model Product {
+  id           Int     @id @default(autoincrement())
+  name         String
+  type         String  // furniture type
+  salesPrice   Decimal @db.Numeric(12, 2)
+  cost         Decimal @db.Numeric(12, 2)
+  category     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  purchaseOrderLines  PurchaseOrderLine[]
+  salesOrderLines     SalesOrderLine[]
+}
+
+model Account {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  type      String  // asset, liability, expense, income, capital
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  journalItems JournalItem[]
+}
+
+model Journal {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  type      String  // sales, purchase, bank, cash
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries JournalEntry[]
+}
+
+model JournalEntry {
+  id        Int     @id @default(autoincrement())
+  journalId Int
+  journal   Journal @relation(fields: [journalId], references: [id])
+  date      DateTime @default(now())
+  reference String?
+  status    String  @default("POSTED") // POSTED, DRAFT
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items JournalItem[]
+  vendorBills VendorBill[]
+  customerInvoices CustomerInvoice[]
+  payments Payment[]
+
+  @@index([journalId])
+  @@index([date])
+}
+
+model JournalItem {
+  id        Int     @id @default(autoincrement())
+  entryId   Int
+  entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  accountId Int
+  account   Account @relation(fields: [accountId], references: [id])
+  debit     Decimal @db.Numeric(12, 2) @default(0)
+  credit    Decimal @db.Numeric(12, 2) @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entryId])
+  @@index([accountId])
+}
+
+model PurchaseOrder {
+  id        Int     @id @default(autoincrement())
+  vendorId  Int
+  vendor    Contact @relation(fields: [vendorId], references: [id])
+  status    String  @default("DRAFT") // DRAFT, CONFIRMED, BILLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines PurchaseOrderLine[]
+  vendorBill VendorBill?
+
+  @@index([vendorId])
+}
+
+model PurchaseOrderLine {
+  id              Int     @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       Int
+  product         Product @relation(fields: [productId], references: [id])
+  qty             Int
+  unitPrice       Decimal @db.Numeric(12, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+model VendorBill {
+  id              Int     @id @default(autoincrement())
+  purchaseOrderId Int     @unique
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  invoiceDate     DateTime
+  dueDate         DateTime?
+  status          String  @default("UNPAID") // UNPAID, PAID
+  journalEntryId  Int?
+  journalEntry    JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([purchaseOrderId])
+  @@index([journalEntryId])
+}
+
+model SalesOrder {
+  id         Int     @id @default(autoincrement())
+  customerId Int
+  customer   Contact @relation(fields: [customerId], references: [id])
+  status     String  @default("DRAFT") // DRAFT, CONFIRMED, INVOICED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  lines SalesOrderLine[]
+  customerInvoice CustomerInvoice?
+
+  @@index([customerId])
+}
+
+model SalesOrderLine {
+  id        Int     @id @default(autoincrement())
+  salesOrderId Int
+  salesOrder  SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product @relation(fields: [productId], references: [id])
+  qty         Int
+  unitPrice   Decimal @db.Numeric(12, 2)
+  tax         Decimal @db.Numeric(12, 2) @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([salesOrderId])
+  @@index([productId])
+}
+
+model CustomerInvoice {
+  id              Int     @id @default(autoincrement())
+  salesOrderId    Int     @unique
+  salesOrder      SalesOrder @relation(fields: [salesOrderId], references: [id])
+  invoiceDate     DateTime
+  dueDate         DateTime?
+  status          String  @default("UNPAID") // UNPAID, PAID
+  journalEntryId  Int?
+  journalEntry    JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([salesOrderId])
+  @@index([journalEntryId])
+}
+
+model Payment {
+  id              Int     @id @default(autoincrement())
+  type            String  // cash, bank
+  amount          Decimal @db.Numeric(12, 2)
+  date            DateTime @default(now())
+  linkedBillId    Int?
+  linkedBill      VendorBill? @relation(fields: [linkedBillId], references: [id])
+  linkedInvoiceId Int?
+  linkedInvoice   CustomerInvoice? @relation(fields: [linkedInvoiceId], references: [id])
+  journalEntryId  Int?
+  journalEntry    JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  status          String  @default("RECORDED") // RECORDED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([linkedBillId])
+  @@index([linkedInvoiceId])
+  @@index([journalEntryId])
+}
