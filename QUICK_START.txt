@@ -1,0 +1,161 @@
+================================================================================
+                    FinEdge-ERP - QUICK START
+================================================================================
+
+✅ BACKEND RUNNING: http://localhost:3000
+✅ FRONTEND RUNNING: http://localhost:5174
+✅ DATABASE: SQLite (dev.db) - Ready
+✅ ALL SYSTEMS GO!
+
+================================================================================
+                        ACCESS YOUR APP NOW!
+================================================================================
+
+👉 OPEN THIS URL IN YOUR BROWSER:
+
+    http://localhost:5174
+
+================================================================================
+                        WHAT YOU CAN DO NOW
+================================================================================
+
+1. CREATE CONTACTS
+   - Navigate to "Contacts" 
+   - Add vendors and customers
+   - Pre-loaded: "Azure Furniture" (vendor), "Nimesh Pathak" (customer)
+
+2. CREATE PRODUCTS
+   - Navigate to "Products"
+   - Add furniture items with prices
+   - Pre-loaded: "Office Chair" (cost ₹3000, sale ₹5000)
+
+3. CREATE PURCHASE ORDERS
+   - Navigate to "Purchase Orders"
+   - Create orders from vendors
+   - Converts to bills with automatic accounting entries
+
+4. PROCESS PAYMENTS
+   - Vendor bills can be paid via Bank or Cash
+   - Customer invoices can be paid via Bank or Cash
+   - Payment accounting entries created automatically
+
+5. VIEW REPORTS
+   - Navigate to "Reports"
+   - See Profit & Loss statement
+   - View Balance Sheet
+   - Check General Ledger
+
+================================================================================
+                        SYSTEM DETAILS
+================================================================================
+
+BACKEND:
+  ✓ Node.js Express server
+  ✓ Prisma ORM
+  ✓ SQLite database
+  ✓ Running on port 3000
+  ✓ Terminal 1: npm run dev
+
+FRONTEND:
+  ✓ React + Vite
+  ✓ Connected to backend
+  ✓ Running on port 5174
+  ✓ Terminal 2: npm run dev
+
+DATABASE:
+  ✓ SQLite (no setup needed)
+  ✓ File: backend/dev.db
+  ✓ Seeded with demo data
+  ✓ Prisma migrations applied
+
+================================================================================
+                        TO STOP SERVICES
+================================================================================
+
+Press Ctrl+C in either terminal to stop.
+
+To restart:
+  - Backend: cd backend && npm run dev
+  - Frontend: cd frontend && npm run dev
+
+================================================================================
+                        DATABASE VIEWER
+================================================================================
+
+To see the database in a GUI:
+
+  cd backend
+  npx prisma studio
+
+Opens at http://localhost:5555
+
+================================================================================
+                        TEST THE SYSTEM
+================================================================================
+
+Follow the IMPLEMENTATION_GUIDE.md for complete end-to-end testing:
+
+1. Create Contacts (Azure Furniture, Nimesh Pathak)
+2. Create Products (Office Chair)
+3. Create Purchase Order (5 chairs @ ₹3000)
+4. Convert to Vendor Bill → Accounting Entry Generated ✓
+5. Record Payment → Payment Entry Generated ✓
+6. Create Sales Order (5 chairs @ ₹5000)
+7. Generate Invoice → Accounting Entry Generated ✓
+8. Record Payment → Payment Entry Generated ✓
+9. View Reports → P&L, Balance Sheet, Ledger
+
+================================================================================
+                        KEY FEATURES WORKING
+================================================================================
+
+✅ Complete accounting loop (Transaction → Entry → Ledger → Reports)
+✅ Double-entry accounting enforced
+✅ Journal entry validation
+✅ Debit/Credit balance checking
+✅ Database transaction safety with rollback
+✅ Automatic accounting entries on bills/invoices
+✅ Payment tracking and status management
+✅ Profit & Loss calculation
+✅ Balance Sheet validation
+✅ General Ledger with running balances
+✅ Dashboard with key metrics
+✅ Master data CRUD (contacts, products, accounts)
+✅ Error handling and validation
+
+================================================================================
+                        TROUBLESHOOTING
+================================================================================
+
+Q: I see "Cannot reach API" error on frontend
+A: Make sure backend is running on port 3000
+   Check: curl http://localhost:3000/health (should return {"status":"ok"})
+
+Q: Port 5173 is in use
+A: Vite auto-switches to 5174, 5175, etc. Check console for actual port
+
+Q: Database connection error
+A: Restart backend: Press Ctrl+C, then npm run dev
+
+Q: Changes not showing
+A: Clear browser cache (Ctrl+Shift+Delete) and refresh page
+
+================================================================================
+                        DOCUMENTATION
+================================================================================
+
+Start with these files:
+
+1. SYSTEMS_RUNNING.md - Current status and access instructions
+2. IMPLEMENTATION_GUIDE.md - Step-by-step end-to-end test
+3. ARCHITECTURE.md - System design details
+4. ACCOUNTING_RULES.md - How accounting works
+5. PROJECT_SUMMARY.md - Complete feature list
+
+================================================================================
+
+                    🎉 YOU'RE ALL SET! 🎉
+
+           Open http://localhost:5174 and start using FinEdge-ERP!
+
+================================================================================
