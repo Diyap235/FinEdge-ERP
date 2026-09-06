@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authUtils } from '../utils/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -12,15 +13,46 @@ export function setCurrentUserId(userId) {
   currentUserId = userId ?? null;
 }
 
+// Add auth token to all requests
 api.interceptors.request.use((config) => {
+  const token = authUtils.getToken();
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   if (currentUserId) {
     config.headers['X-User-Id'] = String(currentUserId);
   }
+  
   return config;
 });
 
+// Handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      authUtils.clearAuth();
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const authAPI = {
+  login: (email, password) => api.post('/auth/login', { email, password }),
+  register: (data) => api.post('/auth/register', data),
+  me: () => api.get('/auth/me'),
+  changePassword: (currentPassword, newPassword) => 
+    api.post('/auth/change-password', { currentPassword, newPassword }),
+  refresh: () => api.post('/auth/refresh'),
+};
+
 export const usersAPI = {
   getAll: () => api.get('/users'),
+  create: (data) => api.post('/users', data),
+  getById: (id) => api.get(`/users/${id}`),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  delete: (id) => api.delete(`/users/${id}`),
 };
 
 export const contactsAPI = {

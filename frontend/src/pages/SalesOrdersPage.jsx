@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { salesOrdersAPI, contactsAPI, productsAPI } from '../services/api';
 import { Plus, ChevronLeft, X } from 'lucide-react';
 
@@ -21,6 +22,7 @@ export default function SalesOrdersPage() {
 
   const loadData = async () => {
     try {
+      setError(null); // Clear any previous errors
       const [ordersRes, customersRes, productsRes] = await Promise.all([
         salesOrdersAPI.getAll(),
         contactsAPI.getAll(),
@@ -30,7 +32,9 @@ export default function SalesOrdersPage() {
       setCustomers(customersRes.data.filter((c) => c.type === 'customer' || c.type === 'both'));
       setProducts(productsRes.data);
     } catch (err) {
+      console.error('Load data error:', err);
       setError(err.message);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -38,16 +42,20 @@ export default function SalesOrdersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    
     try {
       if (!formData.customerId || formData.lines.length === 0) {
-        setError('Customer and lines required');
+        toast.warning('Customer and at least one line item are required');
         return;
       }
+      
       const validLines = formData.lines.filter((l) => l.productId && l.qty && l.unitPrice);
       if (validLines.length === 0) {
-        setError('All lines must have product, quantity, and price');
+        toast.warning('All line items must have product, quantity, and price');
         return;
       }
+      
       await salesOrdersAPI.create({
         customerId: parseInt(formData.customerId),
         lines: validLines.map((l) => ({
@@ -57,22 +65,34 @@ export default function SalesOrdersPage() {
           tax: parseFloat(l.tax || 0),
         })),
       });
+      
       setFormData({ customerId: '', lines: [{ productId: '', qty: 1, unitPrice: '', tax: 0 }] });
       setShowForm(false);
-      loadData();
+      setError(null); // Clear error on success
+      toast.success('Sales Order created successfully!');
+      await loadData();
     } catch (err) {
-      setError(err.message);
+      console.error('Create sales order error:', err);
+      const msg = err.response?.data?.error || err.message || 'Failed to create sales order';
+      // Only show toast, don't set error state
+      toast.error(msg);
     }
   };
 
   const handleGenerateInvoice = async (orderId) => {
+    setError(null);
+    
     try {
       await salesOrdersAPI.generateInvoice(orderId);
+      toast.success('Invoice generated successfully!');
       setSelectedOrder(null);
-      loadData();
-      alert('Invoice generated successfully!');
+      setError(null); // Clear error on success
+      await loadData();
     } catch (err) {
-      setError(err.message);
+      console.error('Generate invoice error:', err);
+      const msg = err.response?.data?.error || err.message || 'Failed to generate invoice';
+      // Only show toast, don't set error state to avoid persistent banner
+      toast.error(msg);
     }
   };
 
@@ -93,7 +113,10 @@ export default function SalesOrdersPage() {
           {selectedOrder && (
             <button
               className="action-btn"
-              onClick={() => setSelectedOrder(null)}
+              onClick={() => {
+                setSelectedOrder(null);
+                setError(null);
+              }}
               style={{ background: 'transparent', color: '#555', border: '1.5px solid #d6d1c9', boxShadow: 'none' }}
             >
               <ChevronLeft size={14} />
@@ -101,7 +124,13 @@ export default function SalesOrdersPage() {
             </button>
           )}
           {!showForm && !selectedOrder && (
-            <button className="action-btn" onClick={() => setShowForm(true)}>
+            <button 
+              className="action-btn" 
+              onClick={() => {
+                setShowForm(true);
+                setError(null);
+              }}
+            >
               <Plus size={14} />
               New Sales Order
             </button>

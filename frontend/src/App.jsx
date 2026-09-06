@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
 import AiPanel from './components/layout/AiPanel';
@@ -17,11 +18,15 @@ import PaymentsPage from './pages/PaymentsPage';
 import JournalEntriesPage from './pages/JournalEntriesPage';
 import ReportsPage from './pages/ReportsPage';
 import AiInvoiceScannerPage from './pages/AiInvoiceScannerPage';
+import UsersPage from './pages/UsersPage';
+import LoginPage from './pages/LoginPage';
+import { authUtils } from './utils/auth';
 import dayBg from './assets/backgrounds/finedge-day.webp';
 import nightBg from './assets/backgrounds/finedge-night.webp';
 
 // ── Page IDs ─────────────────────────────────────────────────────────────────
 const PAGES = {
+  LOGIN:              'login',
   DASHBOARD:          'dashboard',
   CONTACTS:           'contacts',
   PRODUCTS:           'products',
@@ -35,16 +40,48 @@ const PAGES = {
   PAYMENTS:           'payments',
   JOURNAL_ENTRIES:    'journal-entries',
   REPORTS:            'reports',
+  USERS:              'users',
 };
 
 function App() {
-  const [currentPage, setCurrentPage] = useState(PAGES.DASHBOARD);
-  const [currentUser, setCurrentUser] = useState('admin');
+  // Initialize state from localStorage safely
+  const [sessionUser, setSessionUser] = useState(() => {
+    try {
+      return authUtils.getUser();
+    } catch (_) {
+      return null;
+    }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      return authUtils.isAuthenticated();
+    } catch (_) {
+      return false;
+    }
+  });
+  const [currentPage, setCurrentPage] = useState(() => {
+    try {
+      return authUtils.isAuthenticated() ? PAGES.DASHBOARD : PAGES.LOGIN;
+    } catch (_) {
+      return PAGES.LOGIN;
+    }
+  });
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = authUtils.getUser();
+      return saved?.role ? String(saved.role).toLowerCase() : 'admin';
+    } catch (_) {
+      return 'admin';
+    }
+  });
   const [aiOpen, setAiOpen] = useState(false);
-  const [sessionUser, setSessionUser] = useState(null);
-  const [isNight, setIsNight] = useState(
-    () => localStorage.getItem('finedge-bg') === 'night'
-  );
+  const [isNight, setIsNight] = useState(() => {
+    try {
+      return localStorage.getItem('finedge-bg') === 'night';
+    } catch (_) {
+      return false;
+    }
+  });
 
   const toggleBg = () => {
     setIsNight(prev => {
@@ -54,8 +91,34 @@ function App() {
     });
   };
 
+  const handleAuthSuccess = (user) => {
+    const role = String(user?.role || 'admin').toLowerCase();
+    
+    // Update all state synchronously
+    setIsAuthenticated(true);
+    setSessionUser(user);
+    setCurrentUser(role);
+    setCurrentUserId(user?.id ?? null);
+    
+    // Navigate to dashboard
+    setCurrentPage(PAGES.DASHBOARD);
+  };
+
+  const handleLogout = () => {
+    authUtils.clearAuth();
+    setIsAuthenticated(false);
+    setSessionUser(null);
+    setCurrentUserId(null);
+    setCurrentPage(PAGES.LOGIN);
+  };
+
   useEffect(() => {
     let cancelled = false;
+
+    // If sessionUser is already stored, ensure currentUserId is in sync
+    if (sessionUser?.id) {
+      setCurrentUserId(sessionUser.id);
+    }
 
     usersAPI
       .getAll()
@@ -69,13 +132,13 @@ function App() {
           }
           return role === currentUser;
         });
-        setSessionUser(match || null);
-        setCurrentUserId(match?.id ?? null);
+        if (match) {
+          setSessionUser(prev => prev || match);
+          setCurrentUserId(match.id);
+        }
       })
       .catch(() => {
-        if (cancelled) return;
-        setSessionUser(null);
-        setCurrentUserId(null);
+        // Fallback gracefully
       });
 
     return () => {
@@ -99,6 +162,7 @@ function App() {
       case PAGES.PAYMENTS:           return <PaymentsPage />;
       case PAGES.JOURNAL_ENTRIES:    return <JournalEntriesPage />;
       case PAGES.REPORTS:            return <ReportsPage />;
+      case PAGES.USERS:              return <UsersPage />;
       default:                       return <Dashboard onNavigate={setCurrentPage} currentUser={currentUser} />;
     }
   };
@@ -106,6 +170,20 @@ function App() {
   // Background image is global — applies on every page.
   // isNight toggles between day and night environment.
   const activeBg = isNight ? nightBg : dayBg;
+
+  // If not logged in or explicitly on login page, show LoginPage
+  if (!isAuthenticated || currentPage === PAGES.LOGIN) {
+    return (
+      <div className="relative min-h-screen">
+        <Toaster position="top-center" />
+        <LoginPage
+          onAuthSuccess={handleAuthSuccess}
+          isNight={isNight}
+          onBgToggle={toggleBg}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -127,6 +205,7 @@ function App() {
         aiOpen={aiOpen}
         onAiToggle={() => setAiOpen(v => !v)}
         currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Right column: topbar + scrollable content */}
@@ -144,6 +223,8 @@ function App() {
           onUserChange={setCurrentUser}
           isNight={isNight}
           onBgToggle={toggleBg}
+          sessionUser={sessionUser}
+          onLogout={handleLogout}
         />
 
         {/* Scrollable page area — offset for topbar height */}
@@ -164,6 +245,47 @@ function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Global Toast Notifications positioned at top-center */}
+      <Toaster
+        position="top-center"
+        containerStyle={{
+          top: 24,
+          zIndex: 99999,
+        }}
+        toastOptions={{
+          duration: 3500,
+          style: {
+            background: '#ffffff',
+            color: '#1c1c1e',
+            border: '1px solid #e8e3d8',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+            borderRadius: '12px',
+            fontSize: '13.5px',
+            fontWeight: '500',
+            fontFamily: 'inherit',
+            padding: '10px 14px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#0F6A4B',
+              secondary: '#ffffff',
+            },
+            style: {
+              borderLeft: '4px solid #0F6A4B',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#c0392b',
+              secondary: '#ffffff',
+            },
+            style: {
+              borderLeft: '4px solid #c0392b',
+            },
+          },
+        }}
+      />
     </div>
   );
 }

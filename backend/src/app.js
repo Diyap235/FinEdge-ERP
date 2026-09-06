@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 
 // Import routes
+import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import productRoutes from './routes/product.routes.js';
@@ -27,6 +28,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/products', productRoutes);
