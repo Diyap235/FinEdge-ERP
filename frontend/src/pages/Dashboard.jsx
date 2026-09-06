@@ -27,16 +27,31 @@ export default function Dashboard({ onNavigate, currentUser }) {
   const role = String(rawRole || '').toLowerCase().trim();
   const isAuthorizedRole = role === 'admin' || role === 'accountant';
 
-  useEffect(() => { fetchDashboard(); }, []);
+  useEffect(() => { 
+    fetchDashboard(); 
+  }, []);
 
   const fetchDashboard = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await reportsAPI.getDashboardSummary();
       setSummary(response.data);
-      setError(null);
     } catch (err) {
-      setError(err.message);
+      console.error('Dashboard fetch error:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to load dashboard';
+      setError(errorMessage);
+      // Set default empty summary to prevent crashes
+      setSummary({
+        revenue: '0.00',
+        expenses: '0.00',
+        netProfit: '0.00',
+        cashBalance: '0.00',
+        bankBalance: '0.00',
+        receivables: '0.00',
+        payables: '0.00',
+        recentTransactions: []
+      });
     } finally {
       setLoading(false);
     }

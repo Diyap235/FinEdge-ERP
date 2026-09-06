@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Sparkles,
   ScanLine,
+  LogOut,
 } from 'lucide-react';
 
 /* ── Navigation definition ─────────────────────────────────────────
@@ -54,17 +55,23 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Finance & AI',
+    label: 'Finance & Reports',
     items: [
       { id: 'payments',        label: 'Payments',           icon: CreditCard },
       { id: 'journal-entries', label: 'Journal Entries',    icon: Pencil     },
       { id: 'reports',         label: 'Reports',            icon: BarChart2  },
     ],
   },
+  {
+    label: 'System',
+    items: [
+      { id: 'users', label: 'User Management', icon: Users, minRole: 'admin' },
+    ],
+  },
 ];
 
 /* ── Inner content — shared between desktop aside & mobile drawer ── */
-function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle, currentUser }) {
+function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle, currentUser, onLogout }) {
   const rawRole = typeof currentUser === 'object' ? currentUser?.role : currentUser;
   const role = String(rawRole || '').toLowerCase().trim();
   const isAuthorizedRole = role === 'admin' || role === 'accountant';
@@ -162,7 +169,7 @@ function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle, 
         <button
           onClick={() => { onAiToggle(); onClose?.(); }}
           className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl
-                     text-left text-[13px] font-medium outline-none transition-all duration-150 mb-4"
+                     text-left text-[13px] font-medium outline-none transition-all duration-150 mb-3"
           style={aiOpen ? {
             background: 'linear-gradient(135deg,#0F6A4B,#1a8a60)',
             color: '#fff',
@@ -200,6 +207,24 @@ function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle, 
           )}
         </button>
 
+        {onLogout && (
+          <button
+            onClick={() => { onLogout(); onClose?.(); }}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-left text-xs font-semibold outline-none transition-all duration-150 mb-3"
+            style={{
+              background: 'transparent',
+              color: '#dc2626',
+              border: '1px solid rgba(220, 38, 38, 0.25)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <LogOut size={13} />
+            <span>Sign Out</span>
+          </button>
+        )}
+
         <p className="text-[11px] italic leading-relaxed"
            style={{ color: '#b0a898' }}>
           "Numbers move futures.<br />Every entry counts."
@@ -216,7 +241,7 @@ function SidebarContent({ currentPage, onNavigate, onClose, aiOpen, onAiToggle, 
 }
 
 /* ── Main export ───────────────────────────────────────────────── */
-export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle, currentUser }) {
+export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle, currentUser, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -232,6 +257,7 @@ export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle, c
           aiOpen={aiOpen}
           onAiToggle={onAiToggle}
           currentUser={currentUser}
+          onLogout={onLogout}
         />
       </aside>
 
@@ -275,6 +301,7 @@ export default function Sidebar({ currentPage, onNavigate, aiOpen, onAiToggle, c
             aiOpen={aiOpen}
             onAiToggle={onAiToggle}
             currentUser={currentUser}
+            onLogout={onLogout}
           />
         </aside>
       )}

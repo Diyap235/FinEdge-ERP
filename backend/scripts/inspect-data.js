@@ -13,6 +13,11 @@ async function run() {
   const vendorBills = await prisma.vendorBill.count();
   const payments = await prisma.payment.count();
 
+  const poStatus = await prisma.purchaseOrder.groupBy({ by: ['status'], _count: true });
+  const soStatus = await prisma.salesOrder.groupBy({ by: ['status'], _count: true });
+  const accounts = await prisma.account.findMany({ select: { id: true, name: true, type: true } });
+  const journals = await prisma.journal.findMany({ select: { id: true, name: true, type: true } });
+
   console.log({
     users,
     contacts,
@@ -22,6 +27,10 @@ async function run() {
     purchaseOrders,
     vendorBills,
     payments,
+    poStatus,
+    soStatus,
+    accounts,
+    journals
   });
 
   await prisma.$disconnect();

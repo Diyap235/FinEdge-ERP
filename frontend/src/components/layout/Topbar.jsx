@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Search, Bell, ChevronDown, X, CalendarDays,
   ShieldCheck, Calculator, UserCircle, Check,
-  Sun, Moon,
+  Sun, Moon, LogOut,
 } from 'lucide-react';
 
 /* ── Page label map ─────────────────────────────────────────────── */
@@ -42,15 +42,6 @@ const ROLES = [
     color:    '#1a56db',
     bg:       '#e8f0fe',
   },
-  {
-    id:       'contact',
-    label:    'User',
-    subtitle: 'Customer / User',
-    initials: 'U',
-    icon:     UserCircle,
-    color:    '#7c3aed',
-    bg:       '#f3e8ff',
-  },
 ];
 
 /* ── Date pill helper ───────────────────────────────────────────── */
@@ -66,7 +57,7 @@ function formatDate() {
 /* ══════════════════════════════════════════════════════════════════
    RoleDropdown — self-contained, click-outside-aware
 ══════════════════════════════════════════════════════════════════ */
-function RoleDropdown({ currentUser, onUserChange }) {
+function RoleDropdown({ currentUser, onUserChange, sessionUser, onLogout }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
 
@@ -125,7 +116,7 @@ function RoleDropdown({ currentUser, onUserChange }) {
             boxShadow: '0 1px 4px rgba(15,106,75,0.3)',
           }}
         >
-          {active.initials}
+          {sessionUser?.name ? sessionUser.name.charAt(0).toUpperCase() : active.initials}
         </div>
 
         {/* Name + subtitle */}
@@ -134,7 +125,7 @@ function RoleDropdown({ currentUser, onUserChange }) {
             margin: 0, fontSize: 12.5, fontWeight: 700,
             color: '#1c1c1e', lineHeight: 1.2, whiteSpace: 'nowrap',
           }}>
-            {active.label}
+            {sessionUser?.name || active.label}
           </p>
           <p style={{
             margin: 0, fontSize: 10, color: '#999',
@@ -163,21 +154,38 @@ function RoleDropdown({ currentUser, onUserChange }) {
             position: 'absolute',
             top: 'calc(100% + 8px)',
             right: 0,
-            width: 220,
+            width: 230,
             background: '#fff',
             borderRadius: 16,
             border: '1px solid #ede9e0',
             boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
             overflow: 'hidden',
             zIndex: 200,
-            /* Entrance animation via CSS — no extra deps */
             animation: 'roleDropIn 0.18s cubic-bezier(0.22,1,0.36,1) both',
           }}
         >
+          {/* User info header */}
+          <div style={{
+            padding: '12px 14px 10px',
+            borderBottom: '1px solid #f5f2ec',
+            background: '#faf8f4',
+          }}>
+            <p style={{
+              margin: 0, fontSize: 12.5, fontWeight: 700,
+              color: '#111', lineHeight: 1.2,
+            }}>
+              {sessionUser?.name || 'FinEdge User'}
+            </p>
+            <p style={{
+              margin: '2px 0 0', fontSize: 11, color: '#888',
+            }}>
+              {sessionUser?.email || `${active.id}@finedge.com`}
+            </p>
+          </div>
+
           {/* Menu header */}
           <div style={{
-            padding: '10px 14px 8px',
-            borderBottom: '1px solid #f5f2ec',
+            padding: '8px 14px 4px',
           }}>
             <p style={{
               margin: 0, fontSize: 10, fontWeight: 800,
@@ -259,17 +267,35 @@ function RoleDropdown({ currentUser, onUserChange }) {
             );
           })}
 
-          {/* Footer hint */}
-          <div style={{
-            padding: '8px 14px 10px',
-            borderTop: '1px solid #f5f2ec',
-          }}>
-            <p style={{
-              margin: 0, fontSize: 10, color: '#ccc', textAlign: 'center',
-            }}>
-              Role is loaded from the User table for AI requests
-            </p>
-          </div>
+          {/* Logout button */}
+          {onLogout && (
+            <div style={{ padding: '6px', borderTop: '1px solid #f5f2ec' }}>
+              <button
+                onClick={() => { setOpen(false); onLogout(); }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  color: '#dc2626',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <LogOut size={14} />
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -287,7 +313,7 @@ function RoleDropdown({ currentUser, onUserChange }) {
 /* ══════════════════════════════════════════════════════════════════
    Topbar — unchanged except user profile replaced with RoleDropdown
 ══════════════════════════════════════════════════════════════════ */
-export default function Topbar({ currentPage, currentUser, onUserChange, isNight = false, onBgToggle }) {
+export default function Topbar({ currentPage, currentUser, onUserChange, isNight = false, onBgToggle, sessionUser, onLogout }) {
   const [query, setQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -417,7 +443,12 @@ export default function Topbar({ currentPage, currentUser, onUserChange, isNight
       </button>
 
       {/* ── Role dropdown (replaces old static profile) ───────── */}
-      <RoleDropdown currentUser={currentUser} onUserChange={onUserChange} />
+      <RoleDropdown
+        currentUser={currentUser}
+        onUserChange={onUserChange}
+        sessionUser={sessionUser}
+        onLogout={onLogout}
+      />
     </header>
   );
 }

@@ -75,13 +75,41 @@ router.put('/:id', async (req, res) => {
 // Delete user
 router.delete('/:id', async (req, res) => {
   try {
-    await prisma.user.delete({
-      where: { id: parseInt(req.params.id) },
+    const userId = parseInt(req.params.id);
+    
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
     });
 
-    res.json({ message: 'User deleted' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete the user
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.json({ message: 'User deleted successfully', deletedUser: user });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Delete user error:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2003') {
+      return res.status(400).json({ 
+        error: 'Cannot delete user: user is referenced by other records' 
+      });
+    }
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || 'Failed to delete user',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

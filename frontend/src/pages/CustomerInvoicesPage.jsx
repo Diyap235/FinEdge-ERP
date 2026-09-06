@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { customerInvoicesAPI } from '../services/api';
 import { ChevronLeft, ScanLine } from 'lucide-react';
 
@@ -29,21 +30,33 @@ export default function CustomerInvoicesPage({ onNavigate, currentUser }) {
   };
 
   const handlePayment = async (invoiceId) => {
+    // Clear previous errors
+    setError(null);
+    
     try {
-      if (!paymentData.amount) {
-        setError('Amount required');
+      if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
+        toast.warning('Please enter a valid payment amount.');
         return;
       }
-      await customerInvoicesAPI.pay(invoiceId, {
+      
+      // Make the payment request
+      const response = await customerInvoicesAPI.pay(invoiceId, {
         amount: parseFloat(paymentData.amount),
         paymentType: paymentData.paymentType,
       });
-      alert('Payment recorded!');
+      
+      // If we reach here, payment was successful
       setPaymentData({ amount: '', paymentType: 'bank' });
       setSelectedInvoice(null);
-      loadInvoices();
+      toast.success('Payment recorded successfully!');
+      
+      // Reload invoices to show updated status
+      await loadInvoices();
     } catch (err) {
-      setError(err.message);
+      console.error('Payment error:', err);
+      const msg = err.response?.data?.error || err.message || 'Payment failed';
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -173,6 +186,42 @@ export default function CustomerInvoicesPage({ onNavigate, currentUser }) {
           {invData.status !== 'PAID' && (
             <div className="page-card">
               <h3 className="card-section-title">Record Payment</h3>
+              
+              {/* Outstanding Amount Display */}
+              {invData.outstanding && (
+                <div style={{ 
+                  padding: '10px 14px', 
+                  background: '#f8f6f3', 
+                  borderRadius: '8px', 
+                  marginBottom: '14px',
+                  border: '1px solid #e8e3d8'
+                }}>
+                  <span style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                    Outstanding Amount: 
+                  </span>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: '#0F6A4B', marginLeft: '8px' }}>
+                    ₹{parseFloat(invData.outstanding).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentData({ ...paymentData, amount: invData.outstanding })}
+                    style={{
+                      marginLeft: '12px',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      background: '#0F6A4B',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 500
+                    }}
+                  >
+                    Pay Full Amount
+                  </button>
+                </div>
+              )}
+              
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Amount *</label>
@@ -181,6 +230,7 @@ export default function CustomerInvoicesPage({ onNavigate, currentUser }) {
                     step="0.01"
                     value={paymentData.amount}
                     onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                    placeholder="Enter payment amount"
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>

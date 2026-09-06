@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { purchaseOrdersAPI, contactsAPI, productsAPI } from '../services/api';
 import { Plus, ChevronLeft, X } from 'lucide-react';
 
@@ -66,12 +67,24 @@ export default function PurchaseOrdersPage() {
 
   const handleConvertToBill = async (orderId) => {
     try {
+      // Find the order to check its status
+      const order = orders.find(o => o.id === orderId);
+      
+      // If order is DRAFT, confirm it first
+      if (order && order.status === 'DRAFT') {
+        await purchaseOrdersAPI.confirm(orderId);
+      }
+      
+      // Then convert to bill
       await purchaseOrdersAPI.convertToBill(orderId);
       setSelectedOrder(null);
       loadData();
-      alert('Purchase Order converted to Vendor Bill successfully!');
+      toast.success('Purchase Order converted to Vendor Bill successfully!');
     } catch (err) {
-      setError(err.message);
+      console.error('Convert to bill error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to convert purchase order';
+      setError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -195,7 +208,7 @@ export default function PurchaseOrdersPage() {
 
           <div className="button-group">
             {selectedOrderData.status === 'DRAFT' && (
-              <button onClick={() => alert('Confirm functionality coming soon')}>Confirm Order</button>
+              <button onClick={() => toast.info('Confirm functionality coming soon')}>Confirm Order</button>
             )}
             {selectedOrderData.status !== 'BILLED' && !selectedOrderData.vendorBill && (
               <button onClick={() => handleConvertToBill(selectedOrderData.id)}>Convert to Vendor Bill</button>
