@@ -24,14 +24,6 @@ export default function JournalsPage() {
   return (
     <div className="page-root">
 
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Journals</h1>
-          <p className="page-subtitle">{journals.length} journal{journals.length !== 1 ? 's' : ''} configured</p>
-        </div>
-      </div>
-
       {/* Table */}
       <div className="page-card">
         <table>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  Search, Bell, ChevronDown, X, CalendarDays,
+  Search, ChevronDown, X, CalendarDays,
   ShieldCheck, Calculator, UserCircle, Check,
   Sun, Moon,
 } from 'lucide-react';
@@ -66,7 +66,7 @@ function formatDate() {
 /* ══════════════════════════════════════════════════════════════════
    RoleDropdown — self-contained, click-outside-aware
 ══════════════════════════════════════════════════════════════════ */
-function RoleDropdown({ currentUser, onUserChange }) {
+function RoleDropdown({ currentUser, onUserChange, isNight = false }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
 
@@ -89,6 +89,19 @@ function RoleDropdown({ currentUser, onUserChange }) {
     setOpen(false);
   };
 
+  /* Theme tokens for the trigger */
+  const triggerBg     = open
+    ? (isNight ? 'rgba(31,138,104,0.18)' : '#e6f5ef')
+    : (isNight ? 'rgba(28,35,39,0.55)'   : '#f5f2eb');
+  const triggerBorder = open
+    ? (isNight ? 'rgba(52,211,153,0.28)' : '#a8d8c0')
+    : (isNight ? 'rgba(245,242,236,0.14)': '#e5e0d6');
+  const triggerShadow = open
+    ? `0 0 0 3px ${isNight ? 'rgba(31,138,104,0.15)' : 'rgba(15,106,75,0.08)'}`
+    : 'none';
+  const nameColor     = isNight ? '#F5F2EC' : '#1c1c1e';
+  const subtitleColor = isNight ? '#807B72' : '#999';
+
   return (
     <div ref={wrapperRef} style={{ position: 'relative', flexShrink: 0 }}>
 
@@ -101,15 +114,21 @@ function RoleDropdown({ currentUser, onUserChange }) {
           gap: 8,
           padding: '6px 10px 6px 8px',
           borderRadius: 12,
-          background: open ? '#e6f5ef' : '#f5f2eb',
-          border: `1.5px solid ${open ? '#a8d8c0' : '#e5e0d6'}`,
-          cursor: 'pointer',
-          boxShadow: open ? '0 0 0 3px rgba(15,106,75,0.08)' : 'none',
+          background:  triggerBg,
+          border:      `1.5px solid ${triggerBorder}`,
+          cursor:      'pointer',
+          boxShadow:   triggerShadow,
+          backdropFilter:      'blur(14px)',
+          WebkitBackdropFilter:'blur(14px)',
           transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
           fontFamily: 'inherit',
         }}
-        onMouseEnter={e => { if (!open) e.currentTarget.style.background = '#ede9e0'; }}
-        onMouseLeave={e => { if (!open) e.currentTarget.style.background = '#f5f2eb'; }}
+        onMouseEnter={e => {
+          if (!open) e.currentTarget.style.background = isNight ? 'rgba(40,50,55,0.70)' : '#ede9e0';
+        }}
+        onMouseLeave={e => {
+          if (!open) e.currentTarget.style.background = triggerBg;
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Switch role"
@@ -132,12 +151,13 @@ function RoleDropdown({ currentUser, onUserChange }) {
         <div className="hidden sm:block" style={{ textAlign: 'left' }}>
           <p style={{
             margin: 0, fontSize: 12.5, fontWeight: 700,
-            color: '#1c1c1e', lineHeight: 1.2, whiteSpace: 'nowrap',
+            color: nameColor, lineHeight: 1.2, whiteSpace: 'nowrap',
           }}>
             {active.label}
           </p>
           <p style={{
-            margin: 0, fontSize: 10, color: '#999',
+            margin: 0, fontSize: 10,
+            color: subtitleColor,
             lineHeight: 1.2, whiteSpace: 'nowrap',
           }}>
             {active.subtitle}
@@ -148,7 +168,7 @@ function RoleDropdown({ currentUser, onUserChange }) {
         <ChevronDown
           size={13}
           style={{
-            color: '#aaa', flexShrink: 0,
+            color: isNight ? '#807B72' : '#aaa', flexShrink: 0,
             transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease',
           }}
@@ -285,48 +305,89 @@ function RoleDropdown({ currentUser, onUserChange }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Topbar — unchanged except user profile replaced with RoleDropdown
+   Topbar — matte glass header, theme-aware
 ══════════════════════════════════════════════════════════════════ */
 export default function Topbar({ currentPage, currentUser, onUserChange, isNight = false, onBgToggle }) {
   const [query, setQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
+  /* ── Theme-derived tokens ──────────────────────────────────── */
+  const headerBg     = isNight ? 'rgba(18, 22, 26, 0.62)' : 'rgba(246, 241, 234, 0.62)';
+  const headerBorder = isNight ? 'rgba(245, 242, 236, 0.10)' : 'rgba(220, 210, 195, 0.55)';
+  const dividerColor = isNight ? 'rgba(245,242,236,0.12)' : 'rgba(210,200,185,0.50)';
+
+  const textPrimary   = isNight ? '#F5F2EC' : '#1a1714';
+  const textSubtitle  = isNight ? '#C8C4BC' : '#5a5248';
+  const textDate      = isNight ? '#D8D3CB' : '#3d3830';
+  const textSearch    = isNight ? '#F5F2EC' : '#1a1714';
+  const textSearchPh  = isNight ? '#807B72' : '#9a9080';
+
+  const searchBg      = isNight
+    ? (searchFocused ? 'rgba(28,35,39,0.85)' : 'rgba(28,35,39,0.55)')
+    : (searchFocused ? 'rgba(255,255,255,0.85)' : 'rgba(246,241,234,0.70)');
+  const searchBorder  = searchFocused ? '#1F8A68' : (isNight ? 'rgba(245,242,236,0.14)' : 'rgba(210,200,185,0.65)');
+  const searchShadow  = searchFocused ? `0 0 0 3px ${isNight ? 'rgba(31,138,104,0.18)' : 'rgba(15,106,75,0.10)'}` : 'none';
+
+  const datePillBg    = isNight ? 'rgba(28,35,39,0.55)' : 'rgba(240,237,230,0.75)';
+  const datePillBdr   = isNight ? 'rgba(245,242,236,0.12)' : 'rgba(210,200,185,0.60)';
+
   return (
     <header
-      className="fixed top-0 left-0 md:left-[252px] right-0 h-14 z-30
-                 flex items-center gap-3 px-5"
+      className="fixed z-30 flex items-center gap-3 px-5"
       style={{
-        background: 'rgba(255,255,255,0.92)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #ede9e0',
-        boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+        /* ── Floating dock geometry ────────────────────────────── */
+        top:    16,
+        left:   'max(16px, calc(272px + 16px))',   /* sidebar width + gap; collapses to 16px on mobile */
+        right:  16,
+        height: 54,
+
+        /* ── Matte glass surface ───────────────────────────────── */
+        background:           headerBg,
+        backdropFilter:       'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRadius:         24,
+        border:               `1px solid ${headerBorder}`,
+        boxShadow:            isNight
+          ? '0 8px 32px rgba(0,0,0,0.50), 0 2px 8px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04)'
+          : '0 8px 32px rgba(40,30,20,0.12), 0 2px 8px rgba(40,30,20,0.06), inset 0 1px 0 rgba(255,255,255,0.60)',
+        transition: 'background 0.3s ease, border-color 0.3s ease',
       }}
     >
-      {/* Page title */}
+      {/* ── Page title ──────────────────────────────────────────── */}
       <div className="hidden md:flex flex-col justify-center flex-shrink-0 min-w-0">
-        <span className="text-[15px] font-bold text-stone-800 leading-tight truncate">
+        <span
+          className="text-[15px] font-bold leading-tight truncate"
+          style={{ color: textPrimary }}
+        >
           {PAGE_LABELS[currentPage] ?? 'FinEdge ERP'}
         </span>
-        <span className="text-[10.5px] text-stone-400 leading-tight">
+        <span
+          className="text-[10.5px] leading-tight"
+          style={{ color: textSubtitle, fontWeight: 600 }}
+        >
           FinEdge ERP
         </span>
       </div>
 
-      {/* Divider */}
-      <div className="hidden md:block h-6 w-px bg-stone-200 flex-shrink-0" />
+      {/* ── Divider ─────────────────────────────────────────────── */}
+      <div
+        className="hidden md:block h-6 w-px flex-shrink-0"
+        style={{ background: dividerColor }}
+      />
 
-      {/* ── Search ────────────────────────────────────────────── */}
+      {/* ── Search ──────────────────────────────────────────────── */}
       <div className="flex-1 max-w-[320px]">
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-150"
           style={{
-            background: searchFocused ? '#fff' : '#f5f2eb',
-            border: `1.5px solid ${searchFocused ? '#0F6A4B' : '#ede9e0'}`,
-            boxShadow: searchFocused ? '0 0 0 3px rgba(15,106,75,0.10)' : 'none',
+            background:  searchBg,
+            border:      `1.5px solid ${searchBorder}`,
+            boxShadow:   searchShadow,
+            backdropFilter:      'blur(14px)',
+            WebkitBackdropFilter:'blur(14px)',
           }}
         >
-          <Search size={13} style={{ color: '#aaa', flexShrink: 0 }} />
+          <Search size={13} style={{ color: isNight ? '#807B72' : '#9a9080', flexShrink: 0 }} />
           <input
             type="text"
             value={query}
@@ -336,16 +397,22 @@ export default function Topbar({ currentPage, currentUser, onUserChange, isNight
             placeholder="Search anything…"
             style={{
               flex: 1, background: 'transparent', border: 'none',
-              outline: 'none', fontSize: '13px', color: '#1c1c1e',
+              outline: 'none', fontSize: '13px',
+              color: textSearch,
               minWidth: 0, fontFamily: 'inherit',
             }}
           />
+          {/* placeholder color via inline style tag scoped to this input */}
+          <style>{`
+            .topbar-search::placeholder { color: ${textSearchPh}; opacity: 1; }
+          `}</style>
           {query && (
             <button
               onClick={() => setQuery('')}
               style={{
                 background: 'none', border: 'none', padding: 0,
-                boxShadow: 'none', cursor: 'pointer', color: '#aaa',
+                boxShadow: 'none', cursor: 'pointer',
+                color: isNight ? '#807B72' : '#9a9080',
                 display: 'flex', alignItems: 'center', flexShrink: 0,
               }}
             >
@@ -355,69 +422,68 @@ export default function Topbar({ currentPage, currentUser, onUserChange, isNight
         </div>
       </div>
 
-      {/* Spacer */}
+      {/* ── Spacer ──────────────────────────────────────────────── */}
       <div className="flex-1" />
 
-      {/* ── Date pill ─────────────────────────────────────────── */}
+      {/* ── Date pill ───────────────────────────────────────────── */}
       <div
         className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
-        style={{ background: '#f0ede6', border: '1px solid #e5e0d6' }}
+        style={{
+          background:          datePillBg,
+          border:              `1px solid ${datePillBdr}`,
+          backdropFilter:      'blur(14px)',
+          WebkitBackdropFilter:'blur(14px)',
+        }}
       >
-        <CalendarDays size={12} style={{ color: '#0F6A4B', flexShrink: 0 }} />
-        <span className="text-[11.5px] font-medium" style={{ color: '#555' }}>
+        <CalendarDays size={12} style={{ color: '#1F8A68', flexShrink: 0 }} />
+        <span
+          className="text-[11.5px] font-semibold"
+          style={{ color: textDate }}
+        >
           {formatDate()}
         </span>
       </div>
 
-      {/* ── Day / Night background toggle ─────────────────────── */}
+      {/* ── Day / Night toggle ──────────────────────────────────── */}
       <button
         onClick={onBgToggle}
         aria-label={isNight ? 'Switch to day background' : 'Switch to night background'}
         title={isNight ? 'Switch to day' : 'Switch to night'}
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 11,
-          border: `1.5px solid ${isNight ? '#c5b8f0' : '#e5d8a0'}`,
-          background: isNight
-            ? 'linear-gradient(135deg,#2d1f6e 0%,#1a1040 100%)'
-            : 'linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          flexShrink: 0,
+          width: 42, height: 42,
+          borderRadius: '50%',
+          border: `1px solid ${isNight ? 'rgba(197,184,240,0.35)' : 'rgba(229,216,160,0.60)'}`,
+          background: isNight ? 'rgba(30,22,60,0.72)' : 'rgba(254,243,199,0.80)',
+          backdropFilter:      'blur(20px)',
+          WebkitBackdropFilter:'blur(20px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', flexShrink: 0,
           boxShadow: isNight
-            ? '0 2px 8px rgba(99,60,220,0.30)'
-            : '0 2px 8px rgba(245,158,11,0.25)',
+            ? '0 2px 10px rgba(99,60,220,0.22), 0 1px 3px rgba(0,0,0,0.18)'
+            : '0 2px 10px rgba(245,158,11,0.18), 0 1px 3px rgba(0,0,0,0.06)',
           transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.15s ease',
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.10)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = isNight
+            ? '0 6px 18px rgba(99,60,220,0.32), 0 2px 6px rgba(0,0,0,0.22)'
+            : '0 6px 18px rgba(245,158,11,0.28), 0 2px 6px rgba(0,0,0,0.08)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = isNight
+            ? '0 2px 10px rgba(99,60,220,0.22), 0 1px 3px rgba(0,0,0,0.18)'
+            : '0 2px 10px rgba(245,158,11,0.18), 0 1px 3px rgba(0,0,0,0.06)';
+        }}
       >
         {isNight
-          ? <Moon size={15} style={{ color: '#c5b8f0' }} />
-          : <Sun  size={15} style={{ color: '#d97706' }} />
+          ? <Moon size={17} style={{ color: '#ddd6fe', flexShrink: 0 }} />
+          : <Sun  size={17} style={{ color: '#d97706', flexShrink: 0 }} />
         }
       </button>
 
-      {/* ── Notifications ─────────────────────────────────────── */}
-      <button
-        className="relative w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0"
-        style={{ background: '#f5f2eb', border: '1px solid #ede9e0', boxShadow: 'none' }}
-        onMouseEnter={e => e.currentTarget.style.background = '#ede9e0'}
-        onMouseLeave={e => e.currentTarget.style.background = '#f5f2eb'}
-        aria-label="Notifications"
-      >
-        <Bell size={15} style={{ color: '#666' }} />
-        <span
-          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-          style={{ background: '#e74c3c', border: '1.5px solid #fff' }}
-        />
-      </button>
-
-      {/* ── Role dropdown (replaces old static profile) ───────── */}
-      <RoleDropdown currentUser={currentUser} onUserChange={onUserChange} />
+      {/* ── Role dropdown ───────────────────────────────────────── */}
+      <RoleDropdown currentUser={currentUser} onUserChange={onUserChange} isNight={isNight} />
     </header>
   );
 }

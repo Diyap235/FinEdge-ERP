@@ -85,10 +85,6 @@ export default function SalesOrdersPage() {
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Sales Orders</h1>
-          <p className="page-subtitle">{orders.length} order{orders.length !== 1 ? 's' : ''}</p>
-        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {selectedOrder && (
             <button

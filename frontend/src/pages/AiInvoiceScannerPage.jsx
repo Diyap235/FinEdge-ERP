@@ -308,36 +308,11 @@ export default function AiInvoiceScannerPage({ currentUser, onNavigate }) {
     <div className="page-root">
       {/* Header */}
       <div className="page-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h1 className="page-title">AI Invoice Scanner</h1>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '2px 8px',
-                borderRadius: 20,
-                fontSize: 11,
-                fontWeight: 600,
-                background: 'linear-gradient(135deg,#0F6A4B,#1a8a60)',
-                color: 'white',
-              }}
-            >
-              <Sparkles size={11} />
-              OCR Auto-Pilot
-            </span>
-          </div>
-          <p className="page-subtitle">
-            Upload vendor bills or customer invoices for automatic text extraction, entity matching, and ERP ledger posting.
-          </p>
-        </div>
-
         {invoiceData && (
           <button
             className="tab-btn"
             onClick={handleReset}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}
           >
             <RefreshCw size={13} />
             Scan New Invoice

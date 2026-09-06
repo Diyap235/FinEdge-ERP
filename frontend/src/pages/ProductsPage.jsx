@@ -55,14 +55,10 @@ export default function ProductsPage() {
   return (
     <div className="page-root">
 
-      {/* Header */}
+      {/* Action buttons */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Products</h1>
-          <p className="page-subtitle">{products.length} product{products.length !== 1 ? 's' : ''} in catalogue</p>
-        </div>
         {!showForm && (
-          <button className="action-btn" onClick={() => setShowForm(true)}>
+          <button className="action-btn" style={{ marginLeft: 'auto' }} onClick={() => setShowForm(true)}>
             <PackagePlus size={14} />
             New Product
           </button>

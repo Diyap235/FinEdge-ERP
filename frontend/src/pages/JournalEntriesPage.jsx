@@ -30,17 +30,15 @@ export default function JournalEntriesPage() {
 
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Journal Entries</h1>
-          <p className="page-subtitle">{entries.length} entr{entries.length !== 1 ? 'ies' : 'y'}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+          {selectedEntry && (
+            <button className="action-btn" onClick={() => setSelectedEntry(null)}
+              style={{ background: 'transparent', color: '#555', border: '1.5px solid #d6d1c9', boxShadow: 'none' }}>
+              <ChevronLeft size={14} />
+              Back to list
+            </button>
+          )}
         </div>
-        {selectedEntry && (
-          <button className="action-btn" onClick={() => setSelectedEntry(null)}
-            style={{ background: 'transparent', color: '#555', border: '1.5px solid #d6d1c9', boxShadow: 'none' }}>
-            <ChevronLeft size={14} />
-            Back to list
-          </button>
-        )}
       </div>
 
       {/* Detail view */}

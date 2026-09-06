@@ -110,14 +110,15 @@ function App() {
   return (
     <div
       className="flex min-h-screen"
+      data-theme={isNight ? 'night' : 'day'}
       style={{
         backgroundImage:      `url(${activeBg})`,
-        backgroundColor:      '#F6F3EC',
+        backgroundColor:      isNight ? '#12161A' : '#F6F3EC',
         backgroundSize:       'cover',
         backgroundPosition:   'center',
         backgroundRepeat:     'no-repeat',
         backgroundAttachment: 'fixed',
-        transition:           'background-image 0.3s ease',
+        transition:           'background-image 0.4s ease, background-color 0.4s ease',
       }}
     >
       {/* Fixed left sidebar — floats above the background */}
@@ -131,7 +132,7 @@ function App() {
 
       {/* Right column: topbar + scrollable content */}
       <div
-        className="flex flex-col flex-1 md:ml-[252px]"
+        className="flex flex-col flex-1 md:ml-[272px]"
         style={{
           marginRight: aiOpen ? 420 : 0,
           transition: 'margin-right 0.3s ease',
@@ -146,8 +147,8 @@ function App() {
           onBgToggle={toggleBg}
         />
 
-        {/* Scrollable page area — offset for topbar height */}
-        <main className="flex-1 overflow-y-auto pt-14">
+        {/* Scrollable page area — offset for floating topbar: 16px margin + 54px dock + 18px gap */}
+        <main className="flex-1 overflow-y-auto pt-[88px]">
           <div className="container" style={{ padding: '20px' }}>
             {renderPage()}
           </div>

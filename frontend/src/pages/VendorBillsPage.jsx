@@ -51,10 +51,6 @@ export default function VendorBillsPage({ onNavigate, currentUser }) {
 
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Vendor Bills</h1>
-          <p className="page-subtitle">{bills.length} bill{bills.length !== 1 ? 's' : ''}</p>
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {!selectedBill && isAuthorizedRole && (
             <button

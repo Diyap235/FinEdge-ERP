@@ -51,14 +51,10 @@ export default function ContactsPage() {
   return (
     <div className="page-root">
 
-      {/* Header */}
+      {/* Action buttons */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Contacts</h1>
-          <p className="page-subtitle">{contacts.length} contact{contacts.length !== 1 ? 's' : ''}</p>
-        </div>
         {!showForm && (
-          <button className="action-btn" onClick={() => setShowForm(true)}>
+          <button className="action-btn" style={{ marginLeft: 'auto' }} onClick={() => setShowForm(true)}>
             <UserPlus size={14} />
             New Contact
           </button>

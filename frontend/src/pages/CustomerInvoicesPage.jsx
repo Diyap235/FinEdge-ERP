@@ -56,10 +56,6 @@ export default function CustomerInvoicesPage({ onNavigate, currentUser }) {
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Customer Invoices</h1>
-          <p className="page-subtitle">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</p>
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {!selectedInvoice && isAuthorizedRole && (
             <button

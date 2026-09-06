@@ -38,12 +38,9 @@ export default function AccountsPage() {
   return (
     <div className="page-root">
 
-      {/* Header */}
+      {/* Action buttons */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Chart of Accounts</h1>
-          <p className="page-subtitle">{accounts.length} account{accounts.length !== 1 ? 's' : ''}</p>
-        </div>
+        <div>{/* spacer */}</div>
         {!showForm && (
           <button className="action-btn" onClick={() => setShowForm(true)}>
             <Plus size={14} />

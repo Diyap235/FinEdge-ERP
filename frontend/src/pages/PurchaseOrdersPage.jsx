@@ -84,10 +84,6 @@ export default function PurchaseOrdersPage() {
 
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Purchase Orders</h1>
-          <p className="page-subtitle">{orders.length} order{orders.length !== 1 ? 's' : ''}</p>
-        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {selectedOrder && (
             <button className="action-btn" onClick={() => setSelectedOrder(null)}

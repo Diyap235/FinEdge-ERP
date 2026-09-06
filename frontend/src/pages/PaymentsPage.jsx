@@ -29,11 +29,10 @@ export default function PaymentsPage() {
 
       {/* Header */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Payments</h1>
-          <p className="page-subtitle">
+        <div style={{ marginLeft: 'auto' }}>
+          <span style={{ fontSize: 13, color: '#746C62', fontWeight: 500 }}>
             {payments.length} payment{payments.length !== 1 ? 's' : ''} · total ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-          </p>
+          </span>
         </div>
       </div>
 

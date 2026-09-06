@@ -46,14 +46,12 @@ export default function ReportsPage() {
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Reports</h1>
-          <p className="page-subtitle">Financial statements · live data</p>
+        <div style={{ marginLeft: 'auto' }}>
+          <button className="action-btn" onClick={loadReports}>
+            <RefreshCw size={14} />
+            Refresh
+          </button>
         </div>
-        <button className="action-btn" onClick={loadReports}>
-          <RefreshCw size={14} />
-          Refresh
-        </button>
       </div>
 
       {/* ── Tab bar ─────────────────────────────────────────────── */}
